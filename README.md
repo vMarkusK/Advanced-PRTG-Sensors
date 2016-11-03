@@ -24,7 +24,7 @@ http://mycloudrevolution.com/category/prtg/
 
 ## Project Details
 
-This is a Collection my Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
+This is a Collection of Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
 Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone can Contribute.
 
 ## Advanced PRTG Sensor Products
