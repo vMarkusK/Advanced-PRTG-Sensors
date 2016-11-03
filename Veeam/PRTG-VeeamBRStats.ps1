@@ -39,7 +39,7 @@ param(
 # Big thanks to Shawn, creating a awsome Reporting Script:
 # http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
 
-#region 1: Start Load VEEAM Snapin (if not already loaded)
+#region: Start Load VEEAM Snapin (if not already loaded)
 if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
 	if (!(Add-PSSnapin -PassThru VeeamPSSnapIn)) {
 		# Error out if loading fails
@@ -49,7 +49,7 @@ if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
 }
 #endregion
 
-#region 2: Functions
+#region: Functions
 Function Get-vPCRepoInfo {
 [CmdletBinding()]
         param (
@@ -91,11 +91,7 @@ Function Get-vPCRepoInfo {
 }
 #endregion
 
-#region 3: Definitions
-
-#endregion
-
-#region 4: Start BRHost Connection
+#region: Start BRHost Connection
 Write-Output "Starting to Process Connection to $BRHost ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
@@ -117,7 +113,7 @@ if ($NewConnection -eq $null ) {
 }
 #endregion
 
-#region 5: Convert mode (timeframe) to hours
+#region: Convert mode (timeframe) to hours
 If ($reportMode -eq "Monthly") {
         $HourstoCheck = 720
 } Elseif ($reportMode -eq "Weekly") {
@@ -127,7 +123,7 @@ If ($reportMode -eq "Monthly") {
 }
 #endregion
 
-#region 6: Collect and filter Sessions
+#region: Collect and filter Sessions
 # $vbrserverobj = Get-VBRLocalhost        # Get VBR Server object
 # $viProxyList = Get-VBRViProxy           # Get all Proxies
 $repoList = Get-VBRBackupRepository     # Get all Repositories
@@ -138,20 +134,20 @@ $seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$Hoursto
 $seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
 #endregion
 
-#region 7: Collect Jobs
+#region: Collect Jobs
 # $allJobsBk = @(Get-VBRJob | ? {$_.JobType -eq "Backup"})        # Gather Backup jobs
 # $allJobsBkC = @(Get-VBRJob | ? {$_.JobType -eq "BackupSync"})   # Gather BackupCopy jobs
 # $repList = @(Get-VBRJob | ?{$_.IsReplica})                      # Get Replica jobs
 #endregion
 
-#region 8: Get Backup session informations
+#region: Get Backup session informations
 $totalxferBk = 0
 $totalReadBk = 0
 $seshListBk | %{$totalxferBk += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
 $seshListBk | %{$totalReadBk += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
 #endregion
 
-#region 9: Preparing Backup Session Reports
+#region: Preparing Backup Session Reports
 $successSessionsBk = @($seshListBk | ?{$_.Result -eq "Success"})
 $warningSessionsBk = @($seshListBk | ?{$_.Result -eq "Warning"})
 $failsSessionsBk = @($seshListBk | ?{$_.Result -eq "Failed"})
@@ -159,7 +155,7 @@ $runningSessionsBk = @($allSesh | ?{$_.State -eq "Working" -and $_.JobType -eq "
 $failedSessionsBk = @($seshListBk | ?{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 #endregion
 
-#region 10:  Preparing Backup Copy Session Reports
+#region:  Preparing Backup Copy Session Reports
 $successSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Success"})
 $warningSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Warning"})
 $failsSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Failed"})
@@ -168,7 +164,7 @@ $IdleSessionsBkC = @($allSesh | ?{$_.State -eq "Idle" -and $_.JobType -eq "Backu
 $failedSessionsBkC = @($seshListBkC | ?{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 #endregion
 
-#region 11: Preparing Replicatiom Session Reports
+#region: Preparing Replicatiom Session Reports
 $successSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Success"})
 $warningSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Warning"})
 $failsSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Failed"})
@@ -189,7 +185,7 @@ $RepoReport = $repoList | Get-vPCRepoInfo | Select     @{Name="Repository Name";
                                                        Sort "Repository Name" 
 #endregion
 
-#region 12: XML Output for PRTG
+#region: XML Output for PRTG
 Write-Host "<prtg>" 
 $Count = $successSessionsBk.Count
 Write-Host "<result>"
@@ -358,6 +354,7 @@ Write-Host "<result>"
 Write-Host "</prtg>" 
 #endregion
 
+#region: Debug
 if ($DebugPreference -eq "Inquire") {
 	$RepoReport | ft * -Autosize
     
@@ -381,3 +378,4 @@ if ($DebugPreference -eq "Inquire") {
     $SessionResport += $SessionObject
     $SessionResport
 }
+#endregion
