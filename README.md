@@ -14,15 +14,15 @@
 # About
 [*Back to top*](#Title)
 
-Project Owner: 
+## Project Owner
 
 Markus Kraus [@vMarkus_K](https://twitter.com/vMarkus_K)
 
-Project WebSite: 
+## Project WebSite: 
 
 http://mycloudrevolution.com/category/prtg/
 
-Project Details:
+## Project Details:
 
 This is a Collection my Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
 Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone can Contribute.
