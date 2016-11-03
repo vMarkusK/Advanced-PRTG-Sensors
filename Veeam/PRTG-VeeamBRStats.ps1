@@ -9,7 +9,7 @@
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -Debug
+        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
 	
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
@@ -26,7 +26,13 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
-        [string] $BRHost = "veeam01.lan.local"
+        [string] $BRHost = "veeam01.lan.local",
+    [Parameter(Position=1, Mandatory=$false)]
+        $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
+    [Parameter(Position=2, Mandatory=$false)]
+        $repoCritical = 10,
+    [Parameter(Position=3, Mandatory=$false)]
+        $repoWarn = 20
   
 )
 
@@ -86,9 +92,7 @@ Function Get-vPCRepoInfo {
 #endregion
 
 #region 3: Definitions
-$reportMode = "24" # Weekly, Monthly as String or Hour as Integer
-$repoCritical = 10
-$repoWarn = 20
+
 #endregion
 
 #region 4: Start BRHost Connection
