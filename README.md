@@ -1,7 +1,7 @@
 <a name="Title">
 # Title
 
-Collection of my Advanced PRTG Sensors
+## Collection of Advanced PRTG Sensors
 
 |Navigation|
 |-----------------|
@@ -20,7 +20,7 @@ Project WebSite: http://mycloudrevolution.com/
 
 Project Details:
 
-This is a Collection of my Advanced PRTG Sensors.
+This is a Collection of my Advanced [PRTG] (https://www.de.paessler.com/prtg/) Sensors.
 Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone can Contribute.
 
 ## Advanced PRTG Sensor Products
@@ -44,8 +44,8 @@ Contact me via any channel or create a pull request...
 
 Veeam realted Sensors.
 
-+ Veeam Backup & Replication
-+ Veeam Cloud Connect
++ Veeam Backup & Replication [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
++ Veeam Cloud Connect [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)
 
 ## Windows 
 
