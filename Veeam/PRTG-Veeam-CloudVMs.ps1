@@ -280,6 +280,8 @@ Write-Host "<result>"
 Write-Host "</prtg>" 
 #endregion
 
+#region: Debug
 if ($DebugPreference -eq "Inquire") {
 	$VCCBillings | ft * -Autosize
 }
+#endregion
