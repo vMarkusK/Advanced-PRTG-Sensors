@@ -7,11 +7,14 @@
         
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
+
+        .EXAMPLE
+        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -Debug
 	
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
         LASTEDIT: 08/09/2016
-        VERSION: 1.2
+        VERSION: 1.3
         KEYWORDS: Veeam, PRTG
    
         .Link
@@ -23,7 +26,7 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
-    [string] $BRHost = "veeam01.lan.local"
+        [string] $BRHost = "veeam01.lan.local"
   
 )
 
@@ -350,3 +353,27 @@ Write-Host "<result>"
 	}
 Write-Host "</prtg>" 
 #endregion
+
+if ($DebugPreference -eq "Inquire") {
+	$RepoReport | ft * -Autosize
+    
+    $SessionObject = [PSCustomObject] @{
+	    "Successful Backups"  = $successSessionsBk.Count
+	    "Warning Backups" = $warningSessionsBk.Count
+	    "Failes Backups" = $failsSessionsBk.Count
+	    "Failed Backups" = $failedSessionsBk.Count
+	    "Running Backups" = $runningSessionsBk.Count
+	    "Warning BackupCopys" = $warningSessionsBkC.Count
+	    "Failes BackupCopys" = $failsSessionsBkC.Count
+	    "Failed BackupCopys" = $failedSessionsBkC.Count
+	    "Running BackupCopys" = $runningSessionsBkC.Count
+	    "Idle BackupCopys" = $IdleSessionsBkC.Count
+	    "Successful Replications" = $successSessionsRepl.Count
+        "Warning Replications" = $warningSessionsRepl.Count
+        "Failes Replications" = $failsSessionsRepl.Count
+        "Failed Replications" = $failedSessionsRepl.Count
+        "Running Replications" = $RunningSessionsRepl.Count
+    }
+    $SessionResport += $SessionObject
+    $SessionResport
+}
