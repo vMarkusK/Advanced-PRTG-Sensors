@@ -10,10 +10,16 @@
 
 	.EXAMPLE
 	PRTG-Veeam-CloudVMs.ps1 -Server VeeamEM.lan.local -HTTPS:$False -Port 9399 -Authentication <dummy>
+
+	.EXAMPLE
+	PRTG-Veeam-CloudVMs.ps1 -Server VeeamEM.lan.local -HTTPS:$False -Port 9399 -Authentication <dummy> -TenantName "myTenant*"
+
+	.EXAMPLE
+	PRTG-Veeam-CloudVMs.ps1 -Server VeeamEM.lan.local -Authentication <dummy> -TenantName "myTenant*" -debug
 	
 	.Notes
 	NAME:  PRTG-Veeam-CloudVMs.ps1
-	LASTEDIT: 08/11/2016
+	LASTEDIT: 17/02/2017
 	VERSION: 1.5
 	KEYWORDS: Veeam, Cloud Connect, PRTG
    
@@ -31,7 +37,10 @@ param(
 	[Parameter(Position=2, Mandatory=$false)]
 		[String] $Port = "9398",
 	[Parameter(Position=3, Mandatory=$false)]
-		[String] $Authentication = "<dummy>"
+		[String] $Authentication = "<dummy>",
+	[Parameter(Position=4, Mandatory=$false)]
+		[String] $TenantName
+
 
 )
 
@@ -134,6 +143,12 @@ $VCCObject = [PSCustomObject] @{
 	ReplicaStorageUsedPerc = $ReplicaStorageUsedPerc
 }
 $VCCBillings += $VCCObject
+}
+#endregion
+
+#region: Filter Tenant Name
+if ($TenantName) {
+	$VCCBillings = $VCCBillings | where {$_.CustomerName -like $TenantName}	
 }
 #endregion
 
