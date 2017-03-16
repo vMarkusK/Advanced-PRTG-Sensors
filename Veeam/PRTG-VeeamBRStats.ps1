@@ -1,4 +1,4 @@
-<#
+﻿<#
         .SYNOPSIS
         PRTG Veeam Advanced Sensor
   
@@ -149,13 +149,16 @@ $repoList = Get-VBRBackupRepository     # Get all Repositories
 
 
 $scaleouts = Get-VBRBackupRepository -scaleout
-foreach ($scaleout in $scaleouts) {
-    $extents = Get-VBRRepositoryExtent -Repository $scaleout
-    foreach ($ex in $extents) {
-        $repoList = $repoList + $ex.repository
+
+
+if ($scaleouts) {
+    foreach ($scaleout in $scaleouts) {
+        $extents = Get-VBRRepositoryExtent -Repository $scaleout
+        foreach ($ex in $extents) {
+            $repoList = $repoList + $ex.repository
+        }
     }
 }
-
 
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 # $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
