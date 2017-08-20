@@ -1,4 +1,4 @@
-<#
+﻿<#
         .SYNOPSIS
         PRTG Veeam Advanced Sensor
   
@@ -7,7 +7,6 @@
         
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
-
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
 	
@@ -26,7 +25,7 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
-        [string] $BRHost = "veeam01.lan.local",
+        [string] $BRHost = "localhost",
     [Parameter(Position=1, Mandatory=$false)]
         $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
     [Parameter(Position=2, Mandatory=$false)]
@@ -35,6 +34,26 @@ param(
         $repoWarn = 20
   
 )
+
+
+
+#############################################################################
+#If Powershell is running the 32-bit version on a 64-bit machine, we 
+#need to force powershell to run in 64-bit mode .
+#############################################################################
+if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+    write-warning "Y'arg Matey, we're off to 64-bit land....."
+    if ($myInvocation.Line) {
+        &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile $myInvocation.Line
+    }else{
+        &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile -file "$($myInvocation.InvocationName)" $args
+    }
+exit $lastexitcode
+}
+
+
+
+
 
 # Big thanks to Shawn, creating a awsome Reporting Script:
 # http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
@@ -127,6 +146,20 @@ If ($reportMode -eq "Monthly") {
 # $vbrserverobj = Get-VBRLocalhost        # Get VBR Server object
 # $viProxyList = Get-VBRViProxy           # Get all Proxies
 $repoList = Get-VBRBackupRepository     # Get all Repositories
+
+
+$scaleouts = Get-VBRBackupRepository -scaleout
+
+
+if ($scaleouts) {
+    foreach ($scaleout in $scaleouts) {
+        $extents = Get-VBRRepositoryExtent -Repository $scaleout
+        foreach ($ex in $extents) {
+            $repoList = $repoList + $ex.repository
+        }
+    }
+}
+
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 # $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
 $seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
@@ -205,7 +238,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBk.Count
 Write-Host "<result>"
-               "<channel>Failes-Backups</channel>"
+               "<channel>Failed-Backups with retry pending</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -214,7 +247,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failedSessionsBk.Count
 Write-Host "<result>"
-               "<channel>Failed-Backups</channel>"
+               "<channel>Failed-Backups without retry</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -247,7 +280,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBkC.Count
 Write-Host "<result>"
-               "<channel>Failes-BackupCopys</channel>"
+               "<channel>Failes-BackupCopys with retry pending</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -296,7 +329,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsRepl.Count
 Write-Host "<result>"
-               "<channel>Failes-Replications</channel>"
+               "<channel>Failes-Replications with retry pending</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
