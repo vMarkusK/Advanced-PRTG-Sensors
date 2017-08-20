@@ -1,31 +1,22 @@
-<a name="Title">
-# Title
+Collection of Advanced PRTG Sensors
+===================================
 
-## Collection of Advanced PRTG Sensors
-
-|Navigation|
-|-----------------|
-|[About](#About)|
-|[Contribute](#Contribute)|
-|[Structure](#Structure)|
-
-
-<a name="About">
 # About
-[*Back to top*](#Title)
 
-## Project Owner
+## Project Owner:
 
 Markus Kraus [@vMarkus_K](https://twitter.com/vMarkus_K)
 
+MY CLOUD-(R)EVOLUTION [mycloudrevolution.com](http://mycloudrevolution.com/)
+
 ## Project WebSite
 
-http://mycloudrevolution.com/category/prtg/
+[PRTG Blog Category](http://mycloudrevolution.com/category/prtg/)
 
 ## Project Details
 
-This is a Collection of Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
-Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone can Contribute.
+This is a Collection of my Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
+Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone is welcome Contribute.
 
 ## Advanced PRTG Sensor Products
 
@@ -34,25 +25,21 @@ Most Advanced PRTG Sensors were created during Posts on my private Blog, but eve
 + VMware vCenter
 + Microsoft Windows
 
-<a name="Contribute">
 # Contribute
-[*Back to top*](#Title)
 
 Contact me via any channel or create a pull request.
 
-<a name="Structure">
-# Structure
-[*Back to top*](#Title)
+# Project Folder Structure
 
 ## Veeam
 
 Veeam realted Sensors.
 
-+ Veeam Backup & Replication [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
-+ Veeam Cloud Connect [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)
++ Veeam Backup & Replication - [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
++ Veeam Cloud Connect - [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)
 
 ## Windows 
 
 Microsoft Windows realted Sensors.
 
-+ Scheduled Task [Blog Post](http://mycloudrevolution.com/2016/09/15/prtg-advanced-scheduled-task-sensor/)
++ Scheduled Task - [Blog Post](http://mycloudrevolution.com/2016/09/15/prtg-advanced-scheduled-task-sensor/)
