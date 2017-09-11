@@ -126,7 +126,7 @@ If ($reportMode -eq "Monthly") {
 #region: Collect and filter Sessions
 # $vbrserverobj = Get-VBRLocalhost        # Get VBR Server object
 # $viProxyList = Get-VBRViProxy           # Get all Proxies
-$repoList = Get-VBRBackupRepository     # Get all Repositories
+$repoList = Get-VBRBackupRepository | Where {$_.Type -ne "SanSnapshotOnly"}    # Get all Repositories
 $scaleouts = Get-VBRBackupRepository -scaleout
 if ($scaleouts) {
     foreach ($scaleout in $scaleouts) {
