@@ -20,9 +20,11 @@
         .Link
         http://mycloudrevolution.com/
  
- #Requires PS -Version 3.0
- #Requires -Modules VeeamPSSnapIn    
+  
  #>
+#Requires -Version 3
+#Requires -PSSnapin VeeamPSSnapIn  
+
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
@@ -124,10 +126,12 @@ If ($reportMode -eq "Monthly") {
 #endregion
 
 #region: Collect and filter Sessions
-# $vbrserverobj = Get-VBRLocalhost        # Get VBR Server object
-# $viProxyList = Get-VBRViProxy           # Get all Proxies
-$repoList = Get-VBRBackupRepository | Where {$_.Type -ne "SanSnapshotOnly"}    # Get all Repositories
-$scaleouts = Get-VBRBackupRepository -scaleout
+[Array]$repoList = Get-VBRBackupRepository | Where {$_.Type -ne "SanSnapshotOnly"}    # Get all Repositories
+<#
+Thanks to Bernd Leinfelder for the Scalouts Part!
+https://github.com/berndleinfelder
+#>
+[Array]$scaleouts = Get-VBRBackupRepository -scaleout
 if ($scaleouts) {
     foreach ($scaleout in $scaleouts) {
         $extents = Get-VBRRepositoryExtent -Repository $scaleout
@@ -137,16 +141,9 @@ if ($scaleouts) {
     }
 }
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
-# $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
 $seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
 $seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
 $seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
-#endregion
-
-#region: Collect Jobs
-# $allJobsBk = @(Get-VBRJob | ? {$_.JobType -eq "Backup"})        # Gather Backup jobs
-# $allJobsBkC = @(Get-VBRJob | ? {$_.JobType -eq "BackupSync"})   # Gather BackupCopy jobs
-# $repList = @(Get-VBRJob | ?{$_.IsReplica})                      # Get Replica jobs
 #endregion
 
 #region: Get Backup session informations
