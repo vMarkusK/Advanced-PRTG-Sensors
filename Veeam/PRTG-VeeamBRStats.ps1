@@ -13,8 +13,8 @@
 	
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 08/09/2016
-        VERSION: 1.3
+        LASTEDIT: 11/09/2017
+        VERSION: 1.4
         KEYWORDS: Veeam, PRTG
    
         .Link
@@ -127,6 +127,15 @@ If ($reportMode -eq "Monthly") {
 # $vbrserverobj = Get-VBRLocalhost        # Get VBR Server object
 # $viProxyList = Get-VBRViProxy           # Get all Proxies
 $repoList = Get-VBRBackupRepository     # Get all Repositories
+$scaleouts = Get-VBRBackupRepository -scaleout
+if ($scaleouts) {
+    foreach ($scaleout in $scaleouts) {
+        $extents = Get-VBRRepositoryExtent -Repository $scaleout
+        foreach ($ex in $extents) {
+            $repoList = $repoList + $ex.repository
+        }
+    }
+}
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 # $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
 $seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
