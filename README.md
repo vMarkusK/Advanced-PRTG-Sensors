@@ -1,6 +1,6 @@
 Collection of Advanced PRTG Sensors
 ===================================
-
+[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=vMarkus_K&url=https://github.com/mycloudrevolution/Advanced-PRTG-Sensors&title=Advanced-PRTG-Sensors&language=Powershell&tags=github&category=software)
 # About
 
 ## Project Owner:
@@ -8,10 +8,6 @@ Collection of Advanced PRTG Sensors
 Markus Kraus [@vMarkus_K](https://twitter.com/vMarkus_K)
 
 MY CLOUD-(R)EVOLUTION [mycloudrevolution.com](http://mycloudrevolution.com/)
-
-## Donate
-
-[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=vMarkus_K&url=https://github.com/mycloudrevolution/Advanced-PRTG-Sensors&title=Advanced-PRTG-Sensors&language=Powershell&tags=github&category=software)
 
 ## Project WebSite
 
