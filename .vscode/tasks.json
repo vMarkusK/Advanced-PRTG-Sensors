@@ -1,0 +1,44 @@
+{
+	"version": "2.0.0",
+
+	// Start PowerShell
+    "windows": {
+        "command": "C://Windows//sysnative//windowspowershell//v1.0//PowerShell.exe"
+    },
+    "linux": {
+        "command": "/usr/bin/powershell"
+    },
+    "osx": {
+        "command": "/usr/local/bin/powershell"
+    },
+
+	// The command is a shell script
+    "type": "shell",
+
+    "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass"
+    ],
+    "suppressTaskName": true,
+    "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+    },
+
+
+    // Associate with test task runner
+    "tasks": [
+        {
+            "taskName": "Run Test",
+            "args": [
+                "Write-Host 'Invoking Pester'; Invoke-Pester -PesterOption @{IncludeVSCodeMarker=$true};",
+                "Invoke-Command { Write-Host 'Completed Test task in task runner.' }"
+            ],
+            "group": "test",
+            "problemMatcher": "$pester"
+        }
+	]
+}
