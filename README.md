@@ -18,6 +18,13 @@ MY CLOUD-(R)EVOLUTION [mycloudrevolution.com](http://mycloudrevolution.com/)
 This is a Collection of my Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
 Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone is welcome Contribute.
 
+## Project Contribution
+
+Every issue, enhancement request and pull request is welcome!
+
+If you open a pull request please note:
++ Do not change Channel Naming (Script update should be non distruptive)
++ Run  Pester Test
 ## Advanced PRTG Sensor Products
 
 + Veeam Backup & Replication
@@ -38,7 +45,7 @@ Veeam realted Sensors.
 + Veeam Backup & Replication - [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
 + Veeam Cloud Connect - [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)
 
-## Windows 
+## Windows
 
 Microsoft Windows realted Sensors.
 
