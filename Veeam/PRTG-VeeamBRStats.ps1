@@ -26,7 +26,7 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
-        [string] $BRHost = "veeam01.lan.local",
+        [string] $BRHost = "localhost",
     [Parameter(Position=1, Mandatory=$false)]
         $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
     [Parameter(Position=2, Mandatory=$false)]
@@ -95,14 +95,14 @@ Function Get-vPCRepoInfo {
 Write-Output "Starting to Process Connection to $BRHost ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
-	Write-Output "BRHost is Already Connected..."
+	Write-Output "Already connected to BRHost..."
 } elseif ($OpenConnection -eq $null ) {
-	Write-Output "Connecting BRHost..."
+	Write-Output "Connecting to BRHost..."
 	Connect-VBRServer -Server $BRHost
 } else {
-    Write-Output "Disconnection actual BRHost..."
+    Write-Output "Disconnecting from current BRHost..."
     Disconnect-VBRServer
-    Write-Output "Connecting new BRHost..."
+    Write-Output "Connecting to new BRHost..."
     Connect-VBRServer -Server $BRHost
 }
 
@@ -115,11 +115,11 @@ if ($NewConnection -eq $null ) {
 
 #region: Convert mode (timeframe) to hours
 If ($reportMode -eq "Monthly") {
-        $HourstoCheck = 720
+        $hoursToCheck = 720
 } Elseif ($reportMode -eq "Weekly") {
-        $HourstoCheck = 168
+        $hoursToCheck = 168
 } Else {
-        $HourstoCheck = $reportMode
+        $hoursToCheck = $reportMode
 }
 #endregion
 
@@ -129,9 +129,9 @@ If ($reportMode -eq "Monthly") {
 $repoList = Get-VBRBackupRepository     # Get all Repositories
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 # $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
-$seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
-$seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
-$seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
+$seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
+$seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
+$seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
 #endregion
 
 #region: Collect Jobs
