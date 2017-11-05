@@ -26,7 +26,7 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
-        [string] $BRHost = "veeam01.lan.local",
+        [string] $BRHost = "localhost",
     [Parameter(Position=1, Mandatory=$false)]
         $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
     [Parameter(Position=2, Mandatory=$false)]
@@ -95,14 +95,14 @@ Function Get-vPCRepoInfo {
 Write-Output "Starting to Process Connection to $BRHost ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
-	Write-Output "BRHost is Already Connected..."
+	Write-Output "Already connected to BRHost..."
 } elseif ($OpenConnection -eq $null ) {
-	Write-Output "Connecting BRHost..."
+	Write-Output "Connecting to BRHost..."
 	Connect-VBRServer -Server $BRHost
 } else {
-    Write-Output "Disconnection actual BRHost..."
+    Write-Output "Disconnecting from current BRHost..."
     Disconnect-VBRServer
-    Write-Output "Connecting new BRHost..."
+    Write-Output "Connecting to new BRHost..."
     Connect-VBRServer -Server $BRHost
 }
 
@@ -115,11 +115,11 @@ if ($NewConnection -eq $null ) {
 
 #region: Convert mode (timeframe) to hours
 If ($reportMode -eq "Monthly") {
-        $HourstoCheck = 720
+        $hoursToCheck = 720
 } Elseif ($reportMode -eq "Weekly") {
-        $HourstoCheck = 168
+        $hoursToCheck = 168
 } Else {
-        $HourstoCheck = $reportMode
+        $hoursToCheck = $reportMode
 }
 #endregion
 
@@ -129,9 +129,9 @@ If ($reportMode -eq "Monthly") {
 $repoList = Get-VBRBackupRepository     # Get all Repositories
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 # $allResto = Get-VBRRestoreSession       # Get all Restore Sessions
-$seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
-$seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
-$seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
+$seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
+$seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
+$seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$hoursToCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
 #endregion
 
 #region: Collect Jobs
@@ -205,7 +205,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBk.Count
 Write-Host "<result>"
-               "<channel>Failes-Backups</channel>"
+               "<channel>Failure Count - Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -247,7 +247,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBkC.Count
 Write-Host "<result>"
-               "<channel>Failes-BackupCopys</channel>"
+               "<channel>Failure Count - BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -296,7 +296,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsRepl.Count
 Write-Host "<result>"
-               "<channel>Failes-Replications</channel>"
+               "<channel>Failure Count - Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -361,21 +361,21 @@ if ($DebugPreference -eq "Inquire") {
     $SessionObject = [PSCustomObject] @{
 	    "Successful Backups"  = $successSessionsBk.Count
 	    "Warning Backups" = $warningSessionsBk.Count
-	    "Failes Backups" = $failsSessionsBk.Count
+	    "Failure Count Backups" = $failsSessionsBk.Count
 	    "Failed Backups" = $failedSessionsBk.Count
 	    "Running Backups" = $runningSessionsBk.Count
 	    "Warning BackupCopys" = $warningSessionsBkC.Count
-	    "Failes BackupCopys" = $failsSessionsBkC.Count
+	    "Failure Count BackupCopys" = $failsSessionsBkC.Count
 	    "Failed BackupCopys" = $failedSessionsBkC.Count
 	    "Running BackupCopys" = $runningSessionsBkC.Count
 	    "Idle BackupCopys" = $IdleSessionsBkC.Count
 	    "Successful Replications" = $successSessionsRepl.Count
         "Warning Replications" = $warningSessionsRepl.Count
-        "Failes Replications" = $failsSessionsRepl.Count
+        "Failure Count Replications" = $failsSessionsRepl.Count
         "Failed Replications" = $failedSessionsRepl.Count
         "Running Replications" = $RunningSessionsRepl.Count
     }
-    $SessionResport += $SessionObject
-    $SessionResport
+    $SessionsReport += $SessionObject
+    $SessionsReport
 }
 #endregion
