@@ -205,7 +205,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBk.Count
 Write-Host "<result>"
-               "<channel>Failes-Backups</channel>"
+               "<channel>Failure Count - Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -247,7 +247,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsBkC.Count
 Write-Host "<result>"
-               "<channel>Failes-BackupCopys</channel>"
+               "<channel>Failure Count - BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -296,7 +296,7 @@ Write-Host "<result>"
                "</result>" 
 $Count = $failsSessionsRepl.Count
 Write-Host "<result>"
-               "<channel>Failes-Replications</channel>"
+               "<channel>Failure Count - Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
@@ -361,21 +361,21 @@ if ($DebugPreference -eq "Inquire") {
     $SessionObject = [PSCustomObject] @{
 	    "Successful Backups"  = $successSessionsBk.Count
 	    "Warning Backups" = $warningSessionsBk.Count
-	    "Failes Backups" = $failsSessionsBk.Count
+	    "Failure Count Backups" = $failsSessionsBk.Count
 	    "Failed Backups" = $failedSessionsBk.Count
 	    "Running Backups" = $runningSessionsBk.Count
 	    "Warning BackupCopys" = $warningSessionsBkC.Count
-	    "Failes BackupCopys" = $failsSessionsBkC.Count
+	    "Failure Count BackupCopys" = $failsSessionsBkC.Count
 	    "Failed BackupCopys" = $failedSessionsBkC.Count
 	    "Running BackupCopys" = $runningSessionsBkC.Count
 	    "Idle BackupCopys" = $IdleSessionsBkC.Count
 	    "Successful Replications" = $successSessionsRepl.Count
         "Warning Replications" = $warningSessionsRepl.Count
-        "Failes Replications" = $failsSessionsRepl.Count
+        "Failure Count Replications" = $failsSessionsRepl.Count
         "Failed Replications" = $failedSessionsRepl.Count
         "Running Replications" = $RunningSessionsRepl.Count
     }
-    $SessionResport += $SessionObject
-    $SessionResport
+    $SessionsReport += $SessionObject
+    $SessionsReport
 }
 #endregion
