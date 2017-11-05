@@ -1,10 +1,10 @@
 <#
 	.SYNOPSIS
 	PRTG Veeam Cloud Connect Usage Sensor
-  
+
 	.DESCRIPTION
 	Advanced Sensor will Report Cloud Connect Tenant Statistics
-        
+
 	.EXAMPLE
 	PRTG-Veeam-CloudVMs.ps1 -Server VeeamEM.lan.local -HTTPS:$True -Port 9398 -Authentication <dummy>
 
@@ -16,17 +16,17 @@
 
 	.EXAMPLE
 	PRTG-Veeam-CloudVMs.ps1 -Server VeeamEM.lan.local -Authentication <dummy> -TenantName "myTenant*" -debug
-	
+
 	.Notes
 	NAME:  PRTG-Veeam-CloudVMs.ps1
 	LASTEDIT: 17/02/2017
 	VERSION: 1.5
 	KEYWORDS: Veeam, Cloud Connect, PRTG
-   
+
 	.Link
 	http://mycloudrevolution.com/
- 
- #Requires PS -Version 3.0  
+
+ #Requires PS -Version 3.0
  #>
 [cmdletbinding()]
 param(
@@ -80,7 +80,7 @@ Write-Verbose "Session Statistics Url: $URL"
 $Tenants = @{uri = $URL;
                    Method = 'GET';
 				   Headers = @{'X-RestSvcSessionId' = $AuthXML.Headers['X-RestSvcSessionId'];
-           } 
+           }
 	}
 try {$TenantsXML = Invoke-RestMethod @Tenants -ErrorAction Stop} catch {Write-Error "`nERROR: Get Session Statistics Failed!";Exit 1}
 #endregion
@@ -95,12 +95,12 @@ for ( $i = 0; $i -lt $Hrefs.Count; $i++){
 	$TenantsDetails = @{uri = $URL;
     	               Method = 'GET';
 					   Headers = @{'X-RestSvcSessionId' = $AuthXML.Headers['X-RestSvcSessionId'];
-           	} 
+           	}
 		}
 	try {$TenantsDetailsXML = Invoke-RestMethod @TenantsDetails -ErrorAction Stop} catch {Write-Error "`nERROR: Get Tenant Details Failed!";Exit 1}
 #endregion
 
-#region: Build Report	
+#region: Build Report
 # Customer Name
 [String] $CustomerName = $TenantsDetailsXML.CloudTenant.Name
 # Customer BaaS and DRaaS Objects
@@ -126,7 +126,7 @@ if ($ReplicaStorageLimitGb -eq $null) {$ReplicaStorageLimitGb = 0; $ReplicaStora
 [Int] $ReplicaStorageLimitGb = (($ReplicaStorageLimitGb) | Measure-Object -Sum).Sum
 
 if ($ReplicaStorageLimitGb -gt 0) {
-	$ReplicaStorageUsedPerc =  [Math]::Round(($ReplicaStorageUsageGb / $ReplicaStorageLimitGb) * 100,0)	
+	$ReplicaStorageUsedPerc =  [Math]::Round(($ReplicaStorageUsageGb / $ReplicaStorageLimitGb) * 100,0)
 	}
 
 $VCCObject = [PSCustomObject] @{
@@ -148,12 +148,12 @@ $VCCBillings += $VCCObject
 
 #region: Filter Tenant Name
 if ($TenantName) {
-	$VCCBillings = $VCCBillings | where {$_.CustomerName -like $TenantName}	
+	$VCCBillings = $VCCBillings | Where-Object {$_.CustomerName -like $TenantName}
 }
 #endregion
 
 #region: XML Output for PRTG
-Write-Host "<prtg>" 
+Write-Host "<prtg>"
 foreach ($VCCBilling in $VCCBillings){
 	$BackupCount_Name = "BackupCount - " + $VCCBilling.CustomerName
 	$BackupCount_Value = $VCCBilling.BackupCount
@@ -163,8 +163,8 @@ foreach ($VCCBilling in $VCCBillings){
         	    "<value>$BackupCount_Value</value>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
-				
+               	"</result>"
+
 	$ReplicaCount_Name = "ReplicaCount - " + $VCCBilling.CustomerName
 	$ReplicaCount_Value = $VCCBilling.ReplicaCount
 
@@ -173,7 +173,7 @@ foreach ($VCCBilling in $VCCBillings){
         	    "<value>$ReplicaCount_Value</value>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
+               	"</result>"
 
 	$BackupQuotaGb_Name = "BackupQuotaGb - " + $VCCBilling.CustomerName
 	$BackupQuotaGb_Value = $VCCBilling.BackupQuotaGb
@@ -185,7 +185,7 @@ foreach ($VCCBilling in $VCCBillings){
 				"<customUnit>GB</customUnit>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
+               	"</result>"
 
 
 	$BackupUsedQuotaGb_Name = "BackupUsedQuotaGb - " + $VCCBilling.CustomerName
@@ -198,7 +198,7 @@ foreach ($VCCBilling in $VCCBillings){
 				"<customUnit>GB</customUnit>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
+               	"</result>"
 
 	$BackupQuotaUsed_Name = "BackupQuotaUsed - " + $VCCBilling.CustomerName
 	$BackupQuotaUsed_Value = $VCCBilling.BackupQuotaUsedPerc
@@ -216,7 +216,7 @@ foreach ($VCCBilling in $VCCBillings){
                	"</result>"
 
 	$ReplicaMemoryUsageMb_Name = "ReplicaMemoryUsageMb  - " + $VCCBilling.CustomerName
-	$ReplicaMemoryUsageMb_Value = $VCCBilling.ReplicaMemoryUsageMb 
+	$ReplicaMemoryUsageMb_Value = $VCCBilling.ReplicaMemoryUsageMb
 
 	Write-Host "<result>"
     	        "<channel>$ReplicaMemoryUsageMb_Name</channel>"
@@ -225,8 +225,8 @@ foreach ($VCCBilling in $VCCBillings){
 				"<customUnit>MB</customUnit>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
-				
+               	"</result>"
+
 	$ReplicaCPUCount_Name = "ReplicaCPUCount - " + $VCCBilling.CustomerName
 	$ReplicaCPUCount_Value = $VCCBilling.ReplicaCPUCount
 
@@ -236,7 +236,7 @@ foreach ($VCCBilling in $VCCBillings){
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
                	"</result>"
-				
+
 	$ReplicaStorageLimitGb_Name = "ReplicaStorageLimitGb  - " + $VCCBilling.CustomerName
 	$ReplicaStorageLimitGb_Value = $VCCBilling.ReplicaStorageLimitGb
 	Write-Host "<result>"
@@ -246,10 +246,10 @@ foreach ($VCCBilling in $VCCBillings){
 				"<customUnit>GB</customUnit>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
-				
+               	"</result>"
+
 	$ReplicaStorageUsageGb_Name = "ReplicaStorageUsageGb  - " + $VCCBilling.CustomerName
-	$ReplicaStorageUsageGb_Value = $VCCBilling.ReplicaStorageUsageGb 
+	$ReplicaStorageUsageGb_Value = $VCCBilling.ReplicaStorageUsageGb
 
 	Write-Host "<result>"
     	        "<channel>$ReplicaStorageUsageGb_Name</channel>"
@@ -258,7 +258,7 @@ foreach ($VCCBilling in $VCCBillings){
 				"<customUnit>GB</customUnit>"
             	"<showChart>1</showChart>"
                	"<showTable>1</showTable>"
-               	"</result>" 
+               	"</result>"
 
 	$ReplicaStorageUsed_Name = "ReplicaStorageUsed - " + $VCCBilling.CustomerName
 	$ReplicaStorageUsed_Value = $VCCBilling.ReplicaStorageUsedPerc
@@ -290,13 +290,13 @@ Write-Host "<result>"
                "<value>$ReplicaCount_Total</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-            "</result>" 
-			
-Write-Host "</prtg>" 
+            "</result>"
+
+Write-Host "</prtg>"
 #endregion
 
 #region: Debug
 if ($DebugPreference -eq "Inquire") {
-	$VCCBillings | ft * -Autosize
+	$VCCBillings | Format-Table * -Autosize
 }
 #endregion
