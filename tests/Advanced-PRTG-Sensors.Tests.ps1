@@ -15,6 +15,7 @@ Describe "General project validation: $moduleName" {
         $errors.Count | Should Be 0
     }
 
+    Import-Module PSScriptAnalyzer -Force
     It 'Script <file> should not have Errors in PSScriptAnalyzer analysis' -TestCases $testCase {
         param($file)
 

@@ -1,29 +1,29 @@
 <#
         .SYNOPSIS
         PRTG Veeam Advanced Sensor
-  
+
         .DESCRIPTION
         Advanced Sensor will Report Statistics about Backups during last 24 Hours and Actual Repository usage.
-        
+
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
-	
+
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 11/09/2017
-        VERSION: 1.4
+        LASTEDIT: 11/05/2017
+        VERSION: 1.5
         KEYWORDS: Veeam, PRTG
-   
+
         .Link
         http://mycloudrevolution.com/
- 
-  
+
+
  #>
 #Requires -Version 3
-#Requires -PSSnapin VeeamPSSnapIn  
+#Requires -PSSnapin VeeamPSSnapIn
 
 [cmdletbinding()]
 param(
@@ -35,7 +35,7 @@ param(
         $repoCritical = 10,
     [Parameter(Position=3, Mandatory=$false)]
         $repoWarn = 20
-  
+
 )
 
 # Big thanks to Shawn, creating a awsome Reporting Script:
@@ -60,7 +60,7 @@ Function Get-vPCRepoInfo {
                 )
         Begin {
                 $outputAry = @()
-                Function Build-Object {param($name, $repohost, $path, $free, $total)
+                Function New-RepoObject {param($name, $repohost, $path, $free, $total)
                         $repoObj = New-Object -TypeName PSObject -Property @{
                                         Target = $name
 										RepoHost = $repohost
@@ -69,21 +69,21 @@ Function Get-vPCRepoInfo {
                                         StorageTotal = [Math]::Round([Decimal]$total/1GB,2)
                                         FreePercentage = [Math]::Round(($free/$total)*100)
                                 }
-                        Return $repoObj | Select Target, RepoHost, Storepath, StorageFree, StorageTotal, FreePercentage
+                        Return $repoObj | Select-Object Target, RepoHost, Storepath, StorageFree, StorageTotal, FreePercentage
                 }
         }
         Process {
                 Foreach ($r in $Repository) {
                 	# Refresh Repository Size Info
 					[Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-					
+
 					If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
 						$HostName = ""
 					}
 					Else {
 						$HostName = $($r.GetHost()).Name.ToLower()
 					}
-					$outputObj = Build-Object $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
+					$outputObj = New-RepoObject $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
 					}
                 $outputAry += $outputObj
         }
@@ -126,7 +126,7 @@ If ($reportMode -eq "Monthly") {
 #endregion
 
 #region: Collect and filter Sessions
-[Array]$repoList = Get-VBRBackupRepository | Where {$_.Type -ne "SanSnapshotOnly"}    # Get all Repositories
+[Array]$repoList = Get-VBRBackupRepository | Where-Object {$_.Type -ne "SanSnapshotOnly"}    # Get all Repositories
 <#
 Thanks to Bernd Leinfelder for the Scalouts Part!
 https://github.com/berndleinfelder
@@ -141,58 +141,58 @@ if ($scaleouts) {
     }
 }
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
-$seshListBk = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
-$seshListBkc = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
-$seshListRepl = @($allSesh | ?{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
+$seshListBk = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
+$seshListBkc = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
+$seshListRepl = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Replica"})        # Gather all Replication sessions within timeframe
 #endregion
 
 #region: Get Backup session informations
-$totalxferBk = 0
-$totalReadBk = 0
-$seshListBk | %{$totalxferBk += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
-$seshListBk | %{$totalReadBk += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
+$TotalBackupTransfer = 0
+$TotalBackupRead = 0
+$seshListBk | ForEach-Object{$TotalBackupTransfer += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
+$seshListBk | ForEach-Object{$TotalBackupRead += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
 #endregion
 
 #region: Preparing Backup Session Reports
-$successSessionsBk = @($seshListBk | ?{$_.Result -eq "Success"})
-$warningSessionsBk = @($seshListBk | ?{$_.Result -eq "Warning"})
-$failsSessionsBk = @($seshListBk | ?{$_.Result -eq "Failed"})
-$runningSessionsBk = @($allSesh | ?{$_.State -eq "Working" -and $_.JobType -eq "Backup"})
-$failedSessionsBk = @($seshListBk | ?{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+$successSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Success"})
+$warningSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Warning"})
+$failsSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Failed"})
+$runningSessionsBk = @($allSesh | Where-Object{$_.State -eq "Working" -and $_.JobType -eq "Backup"})
+$failedSessionsBk = @($seshListBk | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 #endregion
 
 #region:  Preparing Backup Copy Session Reports
-$successSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Success"})
-$warningSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Warning"})
-$failsSessionsBkC = @($seshListBkC | ?{$_.Result -eq "Failed"})
-$runningSessionsBkC = @($allSesh | ?{$_.State -eq "Working" -and $_.JobType -eq "BackupSync"})
-$IdleSessionsBkC = @($allSesh | ?{$_.State -eq "Idle" -and $_.JobType -eq "BackupSync"})
-$failedSessionsBkC = @($seshListBkC | ?{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+$successSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Success"})
+$warningSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Warning"})
+$failsSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Failed"})
+$runningSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Working" -and $_.JobType -eq "BackupSync"})
+$IdleSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Idle" -and $_.JobType -eq "BackupSync"})
+$failedSessionsBkC = @($seshListBkC | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 #endregion
 
 #region: Preparing Replicatiom Session Reports
-$successSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Success"})
-$warningSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Warning"})
-$failsSessionsRepl = @($seshListRepl | ?{$_.Result -eq "Failed"})
-$runningSessionsRepl = @($allSesh | ?{$_.State -eq "Working" -and $_.JobType -eq "Replica"})
-$failedSessionsRepl = @($seshListRepl | ?{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+$successSessionsRepl = @($seshListRepl | Where-Object{$_.Result -eq "Success"})
+$warningSessionsRepl = @($seshListRepl | Where-Object{$_.Result -eq "Warning"})
+$failsSessionsRepl = @($seshListRepl | Where-Object{$_.Result -eq "Failed"})
+$runningSessionsRepl = @($allSesh | Where-Object{$_.State -eq "Working" -and $_.JobType -eq "Replica"})
+$failedSessionsRepl = @($seshListRepl | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 
-$RepoReport = $repoList | Get-vPCRepoInfo | Select     @{Name="Repository Name"; Expression = {$_.Target}},
+$RepoReport = $repoList | Get-vPCRepoInfo | Select-Object     @{Name="Repository Name"; Expression = {$_.Target}},
                                                        @{Name="Host"; Expression = {$_.RepoHost}},
                                                        @{Name="Path"; Expression = {$_.Storepath}},
                                                        @{Name="Free (GB)"; Expression = {$_.StorageFree}},
                                                        @{Name="Total (GB)"; Expression = {$_.StorageTotal}},
                                                        @{Name="Free (%)"; Expression = {$_.FreePercentage}},
                                                        @{Name="Status"; Expression = {
-                                                       If ($_.FreePercentage -lt $repoCritical) {"Critical"} 
+                                                       If ($_.FreePercentage -lt $repoCritical) {"Critical"}
                                                        ElseIf ($_.FreePercentage -lt $repoWarn) {"Warning"}
                                                        ElseIf ($_.FreePercentage -eq "Unknown") {"Unknown"}
                                                        Else {"OK"}}} | `
-                                                       Sort "Repository Name" 
+                                                       Sort-Object "Repository Name"
 #endregion
 
 #region: XML Output for PRTG
-Write-Host "<prtg>" 
+Write-Host "<prtg>"
 $Count = $successSessionsBk.Count
 Write-Host "<result>"
                "<channel>Successful-Backups</channel>"
@@ -208,7 +208,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxWarning>0</LimitMaxWarning>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failsSessionsBk.Count
 Write-Host "<result>"
                "<channel>Failes-Backups</channel>"
@@ -217,7 +217,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failedSessionsBk.Count
 Write-Host "<result>"
                "<channel>Failed-Backups</channel>"
@@ -226,14 +226,14 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $runningSessionsBk.Count
 Write-Host "<result>"
                "<channel>Running-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
+               "</result>"
 
 $Count = $successSessionsBkC.Count
 Write-Host "<result>"
@@ -250,7 +250,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxWarning>0</LimitMaxWarning>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failsSessionsBkC.Count
 Write-Host "<result>"
                "<channel>Failes-BackupCopys</channel>"
@@ -259,7 +259,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failedSessionsBkC.Count
 Write-Host "<result>"
                "<channel>Failed-BackupCopys</channel>"
@@ -268,21 +268,21 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $runningSessionsBkC.Count
 Write-Host "<result>"
                "<channel>Running-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
+               "</result>"
 $Count = $IdleSessionsBkC.Count
 Write-Host "<result>"
                "<channel>Idle-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
+               "</result>"
 
 $Count = $successSessionsRepl.Count
 Write-Host "<result>"
@@ -299,7 +299,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxWarning>0</LimitMaxWarning>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failsSessionsRepl.Count
 Write-Host "<result>"
                "<channel>Failes-Replications</channel>"
@@ -308,7 +308,7 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $failedSessionsRepl.Count
 Write-Host "<result>"
                "<channel>Failed-Replications</channel>"
@@ -317,31 +317,30 @@ Write-Host "<result>"
                "<showTable>1</showTable>"
                "<LimitMaxError>0</LimitMaxError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 $Count = $runningSessionsRepl.Count
 Write-Host "<result>"
                "<channel>Running-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
-
+               "</result>"
 Write-Host "<result>"
                "<channel>TotalBackupRead</channel>"
-               "<value>$totalReadBk</value>"
+               "<value>$TotalBackupRead</value>"
                "<unit>Custom</unit>"
                "<customUnit>GB</customUnit>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
+               "</result>"
 Write-Host "<result>"
                "<channel>TotalBackupTransfer</channel>"
-               "<value>$totalxferBk</value>"
+               "<value>$TotalBackupTransfer</value>"
                "<unit>Custom</unit>"
                "<customUnit>GB</customUnit>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
-               "</result>" 
+               "</result>"
 
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
@@ -355,33 +354,36 @@ Write-Host "<result>"
                "<LimitMinWarning>20</LimitMinWarning>"
                "<LimitMinError>10</LimitMinError>"
                "<LimitMode>1</LimitMode>"
-               "</result>" 
+               "</result>"
 	}
-Write-Host "</prtg>" 
+Write-Host "</prtg>"
 #endregion
 
 #region: Debug
 if ($DebugPreference -eq "Inquire") {
-	$RepoReport | ft * -Autosize
-    
-    $SessionObject = [PSCustomObject] @{
-	    "Successful Backups"  = $successSessionsBk.Count
-	    "Warning Backups" = $warningSessionsBk.Count
-	    "Failes Backups" = $failsSessionsBk.Count
-	    "Failed Backups" = $failedSessionsBk.Count
-	    "Running Backups" = $runningSessionsBk.Count
-	    "Warning BackupCopys" = $warningSessionsBkC.Count
-	    "Failes BackupCopys" = $failsSessionsBkC.Count
-	    "Failed BackupCopys" = $failedSessionsBkC.Count
-	    "Running BackupCopys" = $runningSessionsBkC.Count
-	    "Idle BackupCopys" = $IdleSessionsBkC.Count
-	    "Successful Replications" = $successSessionsRepl.Count
-        "Warning Replications" = $warningSessionsRepl.Count
-        "Failes Replications" = $failsSessionsRepl.Count
-        "Failed Replications" = $failedSessionsRepl.Count
-        "Running Replications" = $RunningSessionsRepl.Count
-    }
-    $SessionResport += $SessionObject
-    $SessionResport
+        $RepoReport | Format-Table * -Autosize
+
+        $SessionObject = [PSCustomObject] @{
+                "Successful Backups"  = $successSessionsBk.Count
+                "Warning Backups" = $warningSessionsBk.Count
+                "Failes Backups" = $failsSessionsBk.Count
+                "Failed Backups" = $failedSessionsBk.Count
+                "Running Backups" = $runningSessionsBk.Count
+                "Warning BackupCopys" = $warningSessionsBkC.Count
+                "Failes BackupCopys" = $failsSessionsBkC.Count
+                "Failed BackupCopys" = $failedSessionsBkC.Count
+                "Running BackupCopys" = $runningSessionsBkC.Count
+                "Idle BackupCopys" = $IdleSessionsBkC.Count
+                "Successful Replications" = $successSessionsRepl.Count
+                "Warning Replications" = $warningSessionsRepl.Count
+                "Failes Replications" = $failsSessionsRepl.Count
+                "Failed Replications" = $failedSessionsRepl.Count
+                "Running Replications" = $RunningSessionsRepl.Count
+                "Total Backup Transfer" = $TotalBackupTransfer
+                "Total Backup Read" = $TotalBackupRead
+        }
+        $SessionResport += $SessionObject
+        $SessionResport
+
 }
 #endregion
