@@ -14,7 +14,7 @@
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
         LASTEDIT: 11/05/2017
-        VERSION: 1.5
+        VERSION: 1.6
         KEYWORDS: Veeam, PRTG
 
         .Link
@@ -74,8 +74,13 @@ Function Get-vPCRepoInfo {
         }
         Process {
                 Foreach ($r in $Repository) {
-                	# Refresh Repository Size Info
-					[Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
+                        # Refresh Repository Size Info
+                                        try {
+                                                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
+                                        }
+                                        catch {
+                                                Write-Debug "SyncSpaceInfoToDb Failed"
+                                        }
 
 					If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
 						$HostName = ""
