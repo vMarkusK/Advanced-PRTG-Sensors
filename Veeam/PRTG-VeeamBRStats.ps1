@@ -23,7 +23,6 @@
 
  #>
 #Requires -Version 3
-#Requires -PSSnapin VeeamPSSnapIn
 
 [cmdletbinding()]
 param(
