@@ -13,8 +13,8 @@
 
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 11/05/2017
-        VERSION: 1.6
+        LASTEDIT: 11/27/2017
+        VERSION: 1.7
         KEYWORDS: Veeam, PRTG
 
         .Link
@@ -37,7 +37,7 @@ param(
 
 )
 
-# Big thanks to Shawn, creating a awsome Reporting Script:
+# Big thanks to Shawn, creating an awsome Reporting Script:
 # http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
 
 #region: Start Load VEEAM Snapin (if not already loaded)
@@ -62,7 +62,7 @@ Function Get-vPCRepoInfo {
                 Function New-RepoObject {param($name, $repohost, $path, $free, $total)
                         $repoObj = New-Object -TypeName PSObject -Property @{
                                         Target = $name
-										RepoHost = $repohost
+					RepoHost = $repohost
                                         Storepath = $path
                                         StorageFree = [Math]::Round([Decimal]$free/1GB,2)
                                         StorageTotal = [Math]::Round([Decimal]$total/1GB,2)
@@ -74,21 +74,21 @@ Function Get-vPCRepoInfo {
         Process {
                 Foreach ($r in $Repository) {
                         # Refresh Repository Size Info
-                                        try {
-                                                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-                                        }
-                                        catch {
-                                                Write-Debug "SyncSpaceInfoToDb Failed"
-                                        }
+                        try {
+                                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
+                        }
+                        catch {
+                                Write-Debug "SyncSpaceInfoToDb Failed"
+                        }
 
-					If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
-						$HostName = ""
-					}
-					Else {
-						$HostName = $($r.GetHost()).Name.ToLower()
-					}
-					$outputObj = New-RepoObject $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
-					}
+                        If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
+                                $HostName = ""
+                        }
+                        Else {
+                                $HostName = $($r.GetHost()).Name.ToLower()
+                        }
+                        $outputObj = New-RepoObject $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
+	        }
                 $outputAry += $outputObj
         }
         End {
@@ -98,17 +98,17 @@ Function Get-vPCRepoInfo {
 #endregion
 
 #region: Start BRHost Connection
-Write-Output "Starting to Process Connection to $BRHost ..."
+Write-Debug "Starting to Process Connection to $BRHost ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
-	Write-Output "BRHost is Already Connected..."
+	Write-Debug "BRHost is Already Connected..."
 } elseif ($OpenConnection -eq $null ) {
-	Write-Output "Connecting BRHost..."
+	Write-Debug "Connecting BRHost..."
 	Connect-VBRServer -Server $BRHost
 } else {
-    Write-Output "Disconnection actual BRHost..."
+    Write-Debug "Disconnection actual BRHost..."
     Disconnect-VBRServer
-    Write-Output "Connecting new BRHost..."
+    Write-Debug "Connecting new BRHost..."
     Connect-VBRServer -Server $BRHost
 }
 
@@ -196,16 +196,16 @@ $RepoReport = $repoList | Get-vPCRepoInfo | Select-Object     @{Name="Repository
 #endregion
 
 #region: XML Output for PRTG
-Write-Host "<prtg>"
+Write-Output "<prtg>"
 $Count = $successSessionsBk.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Successful-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
 $Count = $warningSessionsBk.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Warning-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -214,7 +214,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failsSessionsBk.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failes-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -223,7 +223,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failedSessionsBk.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failed-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -232,7 +232,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $runningSessionsBk.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Running-Backups</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -240,14 +240,14 @@ Write-Host "<result>"
                "</result>"
 
 $Count = $successSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Successful-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
 $Count = $warningSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Warning-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -256,7 +256,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failsSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failes-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -265,7 +265,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failedSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failed-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -274,14 +274,14 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $runningSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Running-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
 $Count = $IdleSessionsBkC.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Idle-BackupCopys</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -289,14 +289,14 @@ Write-Host "<result>"
                "</result>"
 
 $Count = $successSessionsRepl.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Successful-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
 $Count = $warningSessionsRepl.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Warning-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -305,7 +305,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failsSessionsRepl.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failes-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -314,7 +314,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $failedSessionsRepl.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Failed-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
@@ -323,13 +323,13 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 $Count = $runningSessionsRepl.Count
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>Running-Replications</channel>"
                "<value>$Count</value>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>TotalBackupRead</channel>"
                "<value>$TotalBackupRead</value>"
                "<unit>Custom</unit>"
@@ -337,7 +337,7 @@ Write-Host "<result>"
                "<showChart>1</showChart>"
                "<showTable>1</showTable>"
                "</result>"
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>TotalBackupTransfer</channel>"
                "<value>$TotalBackupTransfer</value>"
                "<unit>Custom</unit>"
@@ -349,7 +349,7 @@ Write-Host "<result>"
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
 $Free = $Repo."Free (%)"
-Write-Host "<result>"
+Write-Output "<result>"
                "<channel>$Name</channel>"
                "<value>$Free</value>"
                "<unit>Percent</unit>"
@@ -360,7 +360,7 @@ Write-Host "<result>"
                "<LimitMode>1</LimitMode>"
                "</result>"
 	}
-Write-Host "</prtg>"
+Write-Output "</prtg>"
 #endregion
 
 #region: Debug
