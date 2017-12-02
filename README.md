@@ -45,6 +45,9 @@ Contact me via any channel or create a pull request.
 Veeam realted Sensors.
 
 + Veeam Backup & Replication - [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
+
+![PRTG-VeeamBRStats](/media/PRTG-VeeamBRStats.png)
+
 + Veeam Cloud Connect - [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)
 
 ## Windows
