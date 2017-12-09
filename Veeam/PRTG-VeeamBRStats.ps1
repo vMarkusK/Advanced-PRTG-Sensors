@@ -9,7 +9,7 @@
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70
+        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70  -Debug
 
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
@@ -158,6 +158,7 @@ if ($scaleouts) {
 }
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
+$SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
 Write-Output "<prtg>"
@@ -232,6 +233,15 @@ if ($includeBackup) {
                  "  <showChart>1</showChart>"
                  "  <showTable>1</showTable>"
                  "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Backups" -Value $warningSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Backups" -Value $failsSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed Backups" -Value $failedSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Backups" -Value $runningSessionsBk.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Transfer" -Value $TotalBackupTransfer
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Read" -Value $TotalBackupRead
 }
 #endregion:
 
@@ -292,6 +302,12 @@ if ($includeCopy) {
                  "  <showChart>1</showChart>"
                  "  <showTable>1</showTable>"
                  "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning BackupCopys" -Value $warningSessionsBkC.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes BackupCopys" -Value $failsSessionsBkC.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed BackupCopys" -Value $failedSessionsBkC.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running BackupCopys" -Value $runningSessionsBkC.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Idle BackupCopys" -Value $IdleSessionsBkC.Count
 }
 #endregion:
 
@@ -345,6 +361,11 @@ if ($includeRepl) {
                  "  <showChart>1</showChart>"
                  "  <showTable>1</showTable>"
                  "</result>"
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Replications" -Value $successSessionsRepl.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Replications" -Value $warningSessionsRepl.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Replications" -Value $failsSessionsRepl.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed Replications" -Value $failedSessionsRepl.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Replications" -Value $RunningSessionsRepl.Count
 }
 #endregion:
 
@@ -388,6 +409,11 @@ if ($includeEP) {
                  "  <showChart>1</showChart>"
                  "  <showTable>1</showTable>"
                  "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Seccessful Endpoints" -Value $successSessionsEP.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Endpoints" -Value $warningSessionsEP.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Endpoints" -Value $failsSessionsEP.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Endpoints" -Value $runningSessionsEP.Count
 }
 #endregion:
 
@@ -422,5 +448,13 @@ Write-Output "<result>"
 #endregion
 
 Write-Output "</prtg>"
+
+#region: Debug
+if ($DebugPreference -eq "Inquire") {
+        $RepoReport | Format-Table * -Autosize
+        $SessionReport += $SessionObject
+        $SessionReport
+}
+#endregion
 
 # eof
