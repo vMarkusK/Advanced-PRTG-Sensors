@@ -1,5 +1,5 @@
 $moduleName = "Advanced-PRTG-Sensors"
-$moduleRoot = Resolve-Path "$PSScriptRoot\..\"
+$moduleRoot = Resolve-Path "$PSScriptRoot\.."
 
 Describe "General project validation: $moduleName" {
 
@@ -36,5 +36,22 @@ Describe "General project validation: $moduleName" {
         {Import-Module  $file.fullname } | Should Not Throw
         $error.Count | Should Be 0
     }
+}
+
+Describe "Individual Sensor Tests" {
+
+    It "PRTG-VeeamBRStats Script should include Debug Region" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats.ps1" | Should FileContentMatch "#region: Debug"
+    }
+
+    It "PRTG-VeeamBRStats Script should include Debug Example" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats.ps1" | Should FileContentMatch 'PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug'
+    }
+
+    It "PRTG-VeeamBRStats Script should include PRTG XML Root" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats.ps1" | Should FileContentMatch 'Write-Output "<prtg>"'
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats.ps1" | Should FileContentMatch 'Write-Output "</prtg>"'
+    }
+
 }
 }
