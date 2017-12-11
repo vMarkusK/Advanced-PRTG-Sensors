@@ -26,7 +26,10 @@ Every issue, enhancement request and pull request is welcome!
 
 If you open a pull request please note:
 + Do not change Channel Naming (Script update should be non distruptive)
-+ Run  Pester Test
++ Do not change default behavior if Features are added (Script update should be non distruptive)
++ Do not remove existing Debug Output
++ Add Debug Output for new Sensor Features
++ Run Pester Test
 ## Advanced PRTG Sensor Products
 
 + Veeam Backup & Replication
