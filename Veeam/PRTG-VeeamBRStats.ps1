@@ -20,6 +20,16 @@
         VERSION: 1.7
         KEYWORDS: Veeam, PRTG
 
+        CREDITS:
+        Thanks to Shawn, for creating an awsome Reporting Script:
+        http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
+
+        Thanks to Bernd Leinfelder for the Scalout Repository part!
+        https://github.com/berndleinfelder
+
+        Thanks to Guy Zuercher for the Endpoint Backup part and a lot of other enhancmeents!
+        https://github.com/gzuercher
+
         .Link
         http://mycloudrevolution.com/
 
