@@ -245,7 +245,6 @@ if ($includeBackup) {
                  "</result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
-    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Backups" -Value $warningSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Backups" -Value $failsSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed Backups" -Value $failedSessionsBk.Count
