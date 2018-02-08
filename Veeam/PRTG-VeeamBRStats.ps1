@@ -65,7 +65,7 @@ $WarningPreference = "SilentlyContinue"
 #region: Start Load VEEAM Snapin (if not already loaded)
 if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
     try {
-        Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop
+        $Trash = Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop
     }
     catch {
         Write-Error "Failed to load VeeamPSSnapIn"
@@ -141,7 +141,7 @@ if($OpenConnection -eq $BRHost) {
         Write-Error "Failed to connect to Veeam BR Host"
 
         Write-Output "<prtg>"
-        Write-Output " <error>2</error>"
+        Write-Output " <error>1</error>"
         Write-Output " <text>Failed to connect to Veeam BR Host</text>"
         Write-Output "</prtg>"
 
@@ -159,7 +159,7 @@ if($OpenConnection -eq $BRHost) {
         Write-Error "Failed to connect to Veeam BR Host"
 
         Write-Output "<prtg>"
-        Write-Output " <error>2</error>"
+        Write-Output " <error>1</error>"
         Write-Output " <text>Failed to connect to Veeam BR Host</text>"
         Write-Output "</prtg>"
 
@@ -172,7 +172,7 @@ if ($NewConnection -eq $null ) {
     Write-Error "Failed to connect to Veeam BR Host"
 
     Write-Output "<prtg>"
-    Write-Output " <error>2</error>"
+    Write-Output " <error>1</error>"
     Write-Output " <text>Failed to connect to Veeam BR Host</text>"
     Write-Output "</prtg>"
 
