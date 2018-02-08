@@ -16,8 +16,8 @@
 
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 11/27/2017
-        VERSION: 1.7
+        LASTEDIT: 02/08/2018
+        VERSION: 1.8
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -64,9 +64,17 @@ $WarningPreference = "SilentlyContinue"
 
 #region: Start Load VEEAM Snapin (if not already loaded)
 if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
-    if (!(Add-PSSnapin -PassThru VeeamPSSnapIn)) {
-        # Error out if loading fails
-        Write-Error "`nERROR: Cannot load the VEEAM Snapin."
+    try {
+        Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Failed to load VeeamPSSnapIn"
+
+        Write-Output "<prtg>"
+        Write-Output " <error>1</error>"
+        Write-Output " <text>Failed to load VeeamPSSnapIn</text>"
+        Write-Output "</prtg>"
+
         Exit
     }
 }
@@ -126,17 +134,48 @@ if($OpenConnection -eq $BRHost) {
     Write-Debug "BRHost is Already Connected..."
 } elseif ($OpenConnection -eq $null ) {
     Write-Debug "Connecting BRHost..."
-    Connect-VBRServer -Server $BRHost
+    try {
+        Connect-VBRServer -Server $BRHost
+    }
+    catch {
+        Write-Error "Failed to connect to Veeam BR Host"
+
+        Write-Output "<prtg>"
+        Write-Output " <error>2</error>"
+        Write-Output " <text>Failed to connect to Veeam BR Host</text>"
+        Write-Output "</prtg>"
+
+        Exit
+    }
 } else {
     Write-Debug "Disconnection actual BRHost..."
     Disconnect-VBRServer
     Write-Debug "Connecting new BRHost..."
-    Connect-VBRServer -Server $BRHost
+
+    try {
+        Connect-VBRServer -Server $BRHost
+    }
+    catch {
+        Write-Error "Failed to connect to Veeam BR Host"
+
+        Write-Output "<prtg>"
+        Write-Output " <error>2</error>"
+        Write-Output " <text>Failed to connect to Veeam BR Host</text>"
+        Write-Output "</prtg>"
+
+        Exit
+    }
 }
 
 $NewConnection = (Get-VBRServerSession).Server
 if ($NewConnection -eq $null ) {
-    Write-Error "`nError: BRHost Connection Failed"
+    Write-Error "Failed to connect to Veeam BR Host"
+
+    Write-Output "<prtg>"
+    Write-Output " <error>2</error>"
+    Write-Output " <text>Failed to connect to Veeam BR Host</text>"
+    Write-Output "</prtg>"
+
     Exit
 }
 #endregion
