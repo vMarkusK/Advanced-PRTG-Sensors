@@ -518,6 +518,7 @@ Write-Output "<result>"
 }
 #endregion
 
+if($RemoteSession){Remove-PSSession -Session $RemoteSession}
 Write-Output "</prtg>"
 
 #region: Debug
