@@ -144,14 +144,15 @@ Function Get-vPCRepoInfo {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                $SyncSpaceCode = {
-                    param($RepositoryName);
-                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
-                }
                 if ($PSRemote) {
+                    $SyncSpaceCode = {
+                        param($RepositoryName);
+                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
+                    }
+
                     Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
                 } else {
-                    $SyncSpaceCode.Invoke($r.Name)
+                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
                 }
 
             }
