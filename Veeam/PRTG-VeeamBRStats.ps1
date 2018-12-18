@@ -5,6 +5,10 @@
         .DESCRIPTION
         Advanced Sensor will Report Statistics about Backups during last 24 Hours and Actual Repository usage.
 
+        .PARAMETER PSRemote
+        Switch to use PSRemoting instead of locally installed VeeamPSSnapin.
+        Use "Get-Help about_remote_requirements" for more information
+
         .EXAMPLE
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
 
@@ -37,8 +41,6 @@
  #>
 #Requires -Version 3
 
-# Error handling
-
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
@@ -50,7 +52,9 @@ param(
     [Parameter(Position=3, Mandatory=$false)]
         $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
-        $selChann = "BCRE" # Inital channel selection
+        $selChann = "BCRE", # Inital channel selection
+    [Parameter(Position=5, Mandatory=$false)]
+         [switch] $PSRemote
 )
 
 $includeBackup = $selChann.Contains("B")
@@ -72,6 +76,7 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 
 trap{
     if($RemoteSession){Remove-PSSession -Session $RemoteSession}
+    Disconnect-VBRServer -ErrorAction SilentlyContinue
 
     Write-Error $_.ToString()
     Write-Error $_.ScriptStackTrace
@@ -84,39 +89,37 @@ trap{
     Exit
 }
 
-# Remoting on VBR server
+#region: Start Load VEEAM Snapin (in local or remote session)
 
-$RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
-if (-not $RemoteSession){throw "Cannot open remote session on : $($BRHost)"}
+if ($PSRemote) {
+    # Remoting on VBR server
 
-# Loading PSSnapin then retrieve commands
-Invoke-Command -Session $RemoteSession -ScriptBlock {Add-PSSnapin VeeamPSSnapin; $WarningPreference = "SilentlyContinue"} -ErrorAction Stop # muting warning about powershell version
-Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
+    $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
+    if (-not $RemoteSession){throw "Cannot open remote session on : $($BRHost)"}
+
+    # Loading PSSnapin then retrieve commands
+    Invoke-Command -Session $RemoteSession -ScriptBlock {Add-PSSnapin VeeamPSSnapin; $WarningPreference = "SilentlyContinue"} -ErrorAction Stop # muting warning about powershell version
+    Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
+} else {
+
+    if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
+        try {
+            Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+        }
+        catch {
+            throw "Failed to load VeeamPSSnapIn"
+        }
+    }
+}
+#endregion
+
+
+
+#region: Functions
 
 # Big thanks to Shawn, creating an awsome Reporting Script:
 # http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
 
-<#
-#region: Start Load VEEAM Snapin (if not already loaded)
-if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
-    try {
-        $Trash = Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop
-    }
-    catch {
-        Write-Error "Failed to load VeeamPSSnapIn"
-
-        Write-Output "<prtg>"
-        Write-Output " <error>1</error>"
-        Write-Output " <text>Failed to load VeeamPSSnapIn</text>"
-        Write-Output "</prtg>"
-
-        Exit
-    }
-}
-#endregion
-#>
-
-#region: Functions
 Function Get-vPCRepoInfo {
 [CmdletBinding()]
     param (
@@ -141,9 +144,16 @@ Function Get-vPCRepoInfo {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                Write-Debug $r.Name
-                Write-Debug $r.Info
-                Invoke-Command -Session $RemoteSession -ScriptBlock { param($RepositoryName); [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true) } -ArgumentList $r.Name
+                $SyncSpaceCode = {
+                    param($RepositoryName);
+                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
+                }
+                if ($PSRemote) {
+                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
+                } else {
+                    $SyncSpaceCode.Invoke($r.Name)
+                }
+
             }
             catch {
                 Write-Debug "SyncSpaceInfoToDb Failed"
@@ -157,8 +167,14 @@ Function Get-vPCRepoInfo {
                 $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
             }
 
-            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string. To gather the info following construction should be used
-            $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock { param($RepositoryName); (Get-VBRBackupRepository -Name $RepositoryName).info } -ArgumentList $r.Name
+            if ($PSRemote) {
+            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
+            # To gather the info following construction should be used
+                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
+                    param($RepositoryName);
+                    (Get-VBRBackupRepository -Name $RepositoryName).info
+                } -ArgumentList $r.Name
+            }
 
             Write-Debug $r.Info
             $outputObj = New-RepoObject $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
@@ -240,7 +256,7 @@ if ($includeBackup) {
     $seshListBk = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
     $TotalBackupTransfer = 0
     $TotalBackupRead = 0
-    $seshListBk | ForEach-Object{$TotalBackupTransfer += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))} #TODO add progress property to the local copy of session info
+    $seshListBk | ForEach-Object{$TotalBackupTransfer += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
     $seshListBk | ForEach-Object{$TotalBackupRead += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
     $successSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Success"})
     $warningSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Warning"})
