@@ -231,7 +231,9 @@ If ($reportMode -eq "Monthly") {
 #endregion
 
 #region: Collect and filter Sessions
-[Array]$repoList = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly|Cloud"}    # Get all Repositories
+[Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
+[Array]$CloudRepos = $AllRepos | Where-Object {$_.Type -match "Cloud"}    # Get all Cloud Repositories
+[Array]$repoList = $AllRepos | Where-Object {$_.Type -notmatch "Cloud"}    # Get all Repositories Except SAN and Cloud
 <#
 Thanks to Bernd Leinfelder for the Scalouts Part!
 https://github.com/berndleinfelder
