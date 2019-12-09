@@ -230,7 +230,7 @@ If ($reportMode -eq "Monthly") {
 }
 #endregion
 
-#region: Collect and filter Sessions
+#region: Collect and filter Repos
 [Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
 [Array]$CloudRepos = $AllRepos | Where-Object {$_.Type -match "Cloud"}    # Get all Cloud Repositories
 [Array]$repoList = $AllRepos | Where-Object {$_.Type -notmatch "Cloud"}    # Get all Repositories Except SAN and Cloud
@@ -247,6 +247,9 @@ if ($scaleouts) {
         }
     }
 }
+#endregion
+
+#region: Collect and filter Sessions
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
