@@ -511,18 +511,24 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
-$RepoReport = $repoList | Get-vPCRepoInfo | Select-Object   @{Name="Repository Name"; Expression = {$_.Target}},
-                                                            @{Name="Host"; Expression = {$_.RepoHost}},
-                                                            @{Name="Path"; Expression = {$_.Storepath}},
-                                                            @{Name="Free (GB)"; Expression = {$_.StorageFree}},
-                                                            @{Name="Total (GB)"; Expression = {$_.StorageTotal}},
-                                                            @{Name="Free (%)"; Expression = {$_.FreePercentage}},
-                                                            @{Name="Status"; Expression = {
-                                                            If ($_.FreePercentage -lt $repoCritical) {"Critical"}
-                                                            ElseIf ($_.FreePercentage -lt $repoWarn) {"Warning"}
-                                                            ElseIf ($_.FreePercentage -eq "Unknown") {"Unknown"}
-                                                            Else {"OK"}}} | `
-                                                            Sort-Object "Repository Name"
+$RawRepoReport = $repoList | Get-vPCRepoInfo
+
+$RepoReport = @()
+ForEach ($RawRepo in $RawRepoReport){
+    If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
+    ElseIf ($RawRepo.FreePercentage -lt $repoWarn) {$Status = "Warning"}
+    ElseIf ($RawRepo.FreePercentage -eq "Unknown") {$Status = "Unknown"}
+    Else {$Status = "OK"}
+    $Object = [PSCustomObject] @{
+            "Repository Name" = $RawRepo.Target
+            "Free (GB)" = $RawRepo.StorageFree
+            "Total (GB)" = $RawRepo.StorageTotal
+            "Free (%)" = $RawRepo.FreePercentage
+            "Status" = $Status
+            }
+    $RepoReport += $Object
+    }
+
 
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
