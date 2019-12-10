@@ -511,10 +511,8 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
-$RawRepoReport = $repoList | Get-vPCRepoInfo
-
 $RepoReport = @()
-ForEach ($RawRepo in $RawRepoReport){
+ForEach ($RawRepo in ($repoList | Get-vPCRepoInfo)){
     If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
     ElseIf ($RawRepo.FreePercentage -lt $repoWarn) {$Status = "Warning"}
     ElseIf ($RawRepo.FreePercentage -eq "Unknown") {$Status = "Unknown"}
@@ -529,7 +527,7 @@ ForEach ($RawRepo in $RawRepoReport){
     $RepoReport += $Object
     }
 
-    ## New Cloud Repo Part
+## New Cloud Repo Part
 if ($CloudRepos) {
     Write-Debug "Cloud Repo Section Entered..."
     ### Gathering Service Providers
