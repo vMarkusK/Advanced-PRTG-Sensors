@@ -529,6 +529,44 @@ ForEach ($RawRepo in $RawRepoReport){
     $RepoReport += $Object
     }
 
+    ## New Cloud Repo Part
+if ($CloudRepos) {
+    Write-Debug "Cloud Repo Section Entered..."
+    ### Gathering Service Providers
+    $CloudProviders = Get-VBRCloudProvider
+
+    foreach ($CloudProvider in $CloudProviders){
+        ### Only process provider if backup resources have been allocated
+        if ($CloudProvider.Resources){
+            ### In case multiple resources have been assigned
+            foreach ($CloudProviderRessource in $CloudProvider.Resources){
+                $CloudRepo = $CloudRepos | Where-Object {($_.CloudProvider.HostName -eq $CloudProvider.DNSName) -and ($_.Name -eq $CloudProviderRessource.RepositoryName)}
+                $totalSpaceGb = [Math]::Round([Decimal]$CloudProviderRessource.RepositoryAllocatedSpace/1KB,2)
+                $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryStoragesSize($CloudRepos.Id.Guid))/1GB,2)
+                $totalFreeGb = [Math]::Round($totalSpaceGb - $totalUsedGb,2)
+                $freePercentage = [Math]::Round(($totalFreeGb/$totalSpaceGb)*100)
+                Write-Debug "Repository Name: $($CloudProviderRessource.RepositoryName)"
+                Write-Debug "Total Space GB: $totalSpaceGb"
+                Write-Debug "Total Used GB: $totalUsedGb"
+                Write-Debug "Total Free GB: $totalFreeGb"
+                Write-Debug "Total Free GB: $freePercentage"
+                If ($freePercentage -lt $repoCritical) {$Status = "Critical"}
+                ElseIf ($freePercentage -lt $repoWarn) {$Status = "Warning"}
+                ElseIf ($freePercentage -eq "Unknown") {$Status = "Unknown"}
+                Else {$Status = "OK"}
+                $Object = [PSCustomObject] @{
+                        "Repository Name" = $CloudProviderRessource.RepositoryNam
+                        "Free (GB)" = $totalFreeGb
+                        "Total (GB)" = $totalSpaceGb
+                        "Free (%)" = $freePercentage
+                        "Status" = $Status
+                        }
+                $RepoReport += $Object
+            }
+        }
+    }
+
+}
 
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
