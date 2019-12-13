@@ -553,7 +553,7 @@ if ($CloudRepos) {
                 ElseIf ($freePercentage -eq "Unknown") {$Status = "Unknown"}
                 Else {$Status = "OK"}
                 $Object = [PSCustomObject] @{
-                        "Repository Name" = $CloudProviderRessource.RepositoryNam
+                        "Repository Name" = $CloudProviderRessource.RepositoryName
                         "Free (GB)" = $totalFreeGb
                         "Total (GB)" = $totalSpaceGb
                         "Free (%)" = $freePercentage
