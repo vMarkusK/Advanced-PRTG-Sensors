@@ -517,13 +517,13 @@ ForEach ($RawRepo in ($repoList | Get-vPCRepoInfo)){
     ElseIf ($RawRepo.FreePercentage -lt $repoWarn) {$Status = "Warning"}
     ElseIf ($RawRepo.FreePercentage -eq "Unknown") {$Status = "Unknown"}
     Else {$Status = "OK"}
-    $Object = [PSCustomObject] @{
-            "Repository Name" = $RawRepo.Target
-            "Free (GB)" = $RawRepo.StorageFree
-            "Total (GB)" = $RawRepo.StorageTotal
-            "Free (%)" = $RawRepo.FreePercentage
-            "Status" = $Status
-            }
+    $Object = "" | Select-Object "Repository Name", "Free (GB)", "Total (GB)", "Free (%)", "Status"
+    $Object."Repository Name" = $RawRepo.Target
+    $Object."Free (GB)" = $RawRepo.StorageFree
+    $Object."Total (GB)" = $RawRepo.StorageTotal
+    $Object."Free (%)" = $RawRepo.FreePercentage
+    $Object."Status" = $Status
+
     $RepoReport += $Object
     }
 
@@ -543,22 +543,17 @@ if ($CloudRepos) {
                 $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryStoragesSize($CloudRepos.Id.Guid))/1GB,2)
                 $totalFreeGb = [Math]::Round($totalSpaceGb - $totalUsedGb,2)
                 $freePercentage = [Math]::Round(($totalFreeGb/$totalSpaceGb)*100)
-                Write-Debug "Repository Name: $($CloudProviderRessource.RepositoryName)"
-                Write-Debug "Total Space GB: $totalSpaceGb"
-                Write-Debug "Total Used GB: $totalUsedGb"
-                Write-Debug "Total Free GB: $totalFreeGb"
-                Write-Debug "Total Free GB: $freePercentage"
                 If ($freePercentage -lt $repoCritical) {$Status = "Critical"}
                 ElseIf ($freePercentage -lt $repoWarn) {$Status = "Warning"}
                 ElseIf ($freePercentage -eq "Unknown") {$Status = "Unknown"}
                 Else {$Status = "OK"}
-                $Object = [PSCustomObject] @{
-                        "Repository Name" = $CloudProviderRessource.RepositoryName
-                        "Free (GB)" = $totalFreeGb
-                        "Total (GB)" = $totalSpaceGb
-                        "Free (%)" = $freePercentage
-                        "Status" = $Status
-                        }
+                $Object = "" | Select-Object "Repository Name", "Free (GB)", "Total (GB)", "Free (%)", "Status"
+                $Object."Repository Name" = $CloudProviderRessource.RepositoryName
+                $Object."Free (GB)" = $totalFreeGb
+                $Object."Total (GB)" = $totalSpaceGb
+                $Object."Free (%)" = $freePercentage
+                $Object."Status" = $Status
+
                 $RepoReport += $Object
             }
         }
