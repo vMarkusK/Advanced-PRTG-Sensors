@@ -231,8 +231,7 @@ If ($reportMode -eq "Monthly") {
 #endregion
 
 #region: Collect and filter Repos
-#[Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
-[Array]$AllRepos = [Veeam.Backup.Core.CBackupRepository]::GetAll() | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
+[Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
 [Array]$CloudRepos = $AllRepos | Where-Object {$_.Type -match "Cloud"}    # Get all Cloud Repositories
 [Array]$repoList = $AllRepos | Where-Object {$_.Type -notmatch "Cloud"}    # Get all Repositories Except SAN and Cloud
 <#
