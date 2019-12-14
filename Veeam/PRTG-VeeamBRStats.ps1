@@ -116,9 +116,10 @@ if ($PSRemote) {
 
 
 #region: Functions
-
-# Big thanks to Shawn, creating an awsome Reporting Script:
-# http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
+<#
+Big thanks to Shawn, creating an awsome Reporting Script:
+http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
+#>
 
 Function Get-vPCRepoInfo {
 [CmdletBinding()]
@@ -527,16 +528,16 @@ ForEach ($RawRepo in ($repoList | Get-vPCRepoInfo)){
     $RepoReport += $Object
     }
 
-## New Cloud Repo Part
+<#
+Thanks to Chris Arceneaux for his Cloud Repo Snippet
+https://forums.veeam.com/powershell-f26/veeam-cloud-repository-disk-space-report-t63332.html
+#>
 if ($CloudRepos) {
     Write-Debug "Cloud Repo Section Entered..."
-    ### Gathering Service Providers
     $CloudProviders = Get-VBRCloudProvider
 
     foreach ($CloudProvider in $CloudProviders){
-        ### Only process provider if backup resources have been allocated
         if ($CloudProvider.Resources){
-            ### In case multiple resources have been assigned
             foreach ($CloudProviderRessource in $CloudProvider.Resources){
                 $CloudRepo = $CloudRepos | Where-Object {($_.CloudProvider.HostName -eq $CloudProvider.DNSName) -and ($_.Name -eq $CloudProviderRessource.RepositoryName)}
                 $totalSpaceGb = [Math]::Round([Decimal]$CloudProviderRessource.RepositoryAllocatedSpace/1KB,2)
@@ -587,5 +588,3 @@ if ($DebugPreference -eq "Inquire") {
         $SessionReport
 }
 #endregion
-
-# eof
