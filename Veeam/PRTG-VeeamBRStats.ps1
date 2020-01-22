@@ -95,7 +95,7 @@ if ($PSRemote) {
     # Remoting on VBR server
 
     $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
-    if (-not $RemoteSession){throw "Cannot open remote session on : $($BRHost)"}
+    if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
 
     # Loading PSSnapin then retrieve commands
     Invoke-Command -Session $RemoteSession -ScriptBlock {Add-PSSnapin VeeamPSSnapin; $WarningPreference = "SilentlyContinue"} -ErrorAction Stop # muting warning about powershell version
@@ -190,34 +190,34 @@ Function Get-vPCRepoInfo {
 #endregion
 
 #region: Start BRHost Connection
-Write-Debug "Starting to Process Connection to $BRHost ..."
+Write-Debug "Starting to Process Connection to '$BRHost' with user '$env:USERNAME' ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
-    Write-Debug "BRHost is Already Connected..."
+    Write-Debug "BRHost '$BRHost' is Already Connected..."
 } elseif ($null -eq $OpenConnection) {
-    Write-Debug "Connecting BRHost..."
+    Write-Debug "Connecting BRHost '$BRHost' with user '$env:USERNAME'..."
     try {
         Connect-VBRServer -Server $BRHost
     }
     catch {
-        Throw "Failed to connect to Veeam BR Host"
+        Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
     }
 } else {
-    Write-Debug "Disconnection actual BRHost..."
+    Write-Debug "Disconnection current BRHost..."
     Disconnect-VBRServer
-    Write-Debug "Connecting new BRHost..."
+    Write-Debug "Connecting new BRHost '$BRHost' with user '$env:USERNAME'..."
 
     try {
         Connect-VBRServer -Server $BRHost
     }
     catch {
-        Throw "Failed to connect to Veeam BR Host"
+        Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
     }
 }
 
 $NewConnection = (Get-VBRServerSession).Server
 if ($null -eq $NewConnection) {
-    Throw "Failed to connect to Veeam BR Host"
+    Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
 }
 #endregion
 
