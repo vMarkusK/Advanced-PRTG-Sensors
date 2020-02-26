@@ -18,7 +18,7 @@ MY CLOUD-(R)EVOLUTION [mycloudrevolution.com](http://mycloudrevolution.com/)
 ## Project Details
 
 This is a Collection of my Advanced [PRTG](https://www.de.paessler.com/prtg/) Sensors.
-Most Advanced PRTG Sensors were created during Posts on my private Blog, but everyone is welcome Contribute.
+Most Advanced PRTG Sensors were created during posts on my private blog, but everyone is welcome contribute.
 
 ## Project Contribution
 
