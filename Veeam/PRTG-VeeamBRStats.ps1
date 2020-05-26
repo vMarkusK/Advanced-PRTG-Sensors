@@ -366,7 +366,7 @@ if ($includeCopy) {
                 "</result>"
     $Count = $failsSessionsBkC.Count
     Write-Output "<result>"
-                "  <channel>Failes-BackupCopys</channel>"
+                "  <channel>Failed-BackupCopys</channel>"
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
@@ -432,7 +432,7 @@ if ($includeRepl) {
                 "</result>"
     $Count = $failsSessionsRepl.Count
     Write-Output "<result>"
-                "  <channel>Failes-Replications</channel>"
+                "  <channel>Failed-Replications</channel>"
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
@@ -489,7 +489,7 @@ if ($includeEP) {
                 "</result>"
     $Count = $failsSessionsEP.Count
     Write-Output "<result>"
-                "  <channel>Failes-Endpoints</channel>"
+                "  <channel>Failed-Endpoints</channel>"
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
