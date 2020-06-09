@@ -366,7 +366,7 @@ if ($includeCopy) {
                 "</result>"
     $Count = $failsSessionsBkC.Count
     Write-Output "<result>"
-                "  <channel>Failed-BackupCopys</channel>"
+                "  <channel>Fails-BackupCopys</channel>"
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
