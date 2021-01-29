@@ -61,6 +61,7 @@ $includeBackup = $selChann.Contains("B")
 $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
+$includeNAS = $selChann.Contains("N") #Available V10+
 
 # Disable output of warning to prevent Veeam PS quirks
 $WarningPreference = "SilentlyContinue"
@@ -336,6 +337,64 @@ if ($includeBackup) {
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Backups" -Value $runningSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Transfer" -Value $TotalBackupTransfer
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Read" -Value $TotalBackupRead
+}
+#endregion:
+
+#region: NAS Jobs
+if ($includeNAS) {
+    $seshListNAS = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "NASBackup"})      # Gather all NASBackup sessions within timeframe
+    $successSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Success"})
+    $warningSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Warning"})
+    $failsSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Failed"})
+    $failedSessionsNAS = @($seshListNAS | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+    $Count = $successSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Successful-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Warning-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failsSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Failes-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Failed-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Running-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $IdleSessionsNAS.Count
+
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning NAS-Backups" -Value $warningSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes NAS-Backups" -Value $failsSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed NAS-Backups" -Value $failedSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running NAS-Backups" -Value $runningSessionsNAS.Count
 }
 #endregion:
 
