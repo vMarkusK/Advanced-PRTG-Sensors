@@ -61,6 +61,7 @@ $includeBackup = $selChann.Contains("B")
 $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
+$includeFileCopy = $selChann.Contains("F")
 $includeNAS = $selChann.Contains("N") #Available V10+
 
 # Disable output of warning to prevent Veeam PS quirks
@@ -337,6 +338,64 @@ if ($includeBackup) {
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Backups" -Value $runningSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Transfer" -Value $TotalBackupTransfer
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Read" -Value $TotalBackupRead
+}
+#endregion:
+
+#region: File Copy Jobs
+if ($includeFileCopy) {
+    $seshListFile = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Copy"})      # Gather all File Copy sessions within timeframe
+    $successSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Success"})
+    $warningSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Warning"})
+    $failsSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Failed"})
+    $failedSessionsFile = @($seshListFile | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+    $Count = $successSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Successful-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Warning-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failsSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Failes-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Failed-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Running-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $IdleSessionsFile.Count
+
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning FileCopies" -Value $warningSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes FileCopies" -Value $failsSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed FileCopies" -Value $failedSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running FileCopies" -Value $runningSessionsFile.Count
 }
 #endregion:
 
