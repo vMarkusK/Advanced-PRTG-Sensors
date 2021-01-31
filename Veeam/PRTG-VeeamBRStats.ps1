@@ -62,6 +62,7 @@ $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
 $includeFileCopy = $selChann.Contains("F")
+$includeTape = $selChann.Contains("T")
 $includeNAS = $selChann.Contains("N") #Available V10+
 
 # Disable output of warning to prevent Veeam PS quirks
@@ -256,6 +257,19 @@ if ($scaleouts) {
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
 $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
+#endregion
+
+#region: Collect Tape Sessions
+if ($includeTape){
+    $TapeJobs = Get-VBRTapeJob #Get Tape Jobs
+    $allSeshTape = $null
+
+    foreach($TapeJob in $TapeJobs){ #Get Sessions for each Tape Job
+        $TapeSeshPerJob = Get-VBRSession -Job $TapeJob
+        $allSeshTape = $allSeshTape + $TapeSeshPerJob
+
+        }
+}
 #endregion
 
 Write-Output "<prtg>"
@@ -626,6 +640,74 @@ if ($includeEP) {
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Endpoints" -Value $warningSessionsEP.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Endpoints" -Value $failsSessionsEP.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Endpoints" -Value $runningSessionsEP.Count
+}
+#endregion:
+
+#region: Tape Backup
+if ($includeTape) {
+#Get Free Tapes
+$FreeTapeMedia = (Get-VBRTapeMedium -MediaPool "Free").count
+
+#Tape Jobs Running
+$runningSessionsTape = $allSeshTape | where {$_.state -ne "stopped"}
+
+#Tape Jobs Failed Last 24h
+$failedSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Failed"))}
+
+#Tape Jobs Warning Last 24h
+$warningSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Warning"))}
+
+#Tape Jobs Success Last 24h
+$successSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Success"))}
+
+
+    $Count = $successSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Successful-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Warning-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Failed-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Running-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    Write-Output "<result>"
+                "  <channel>Free-TapeMedia</channel>"
+                "  <value>$FreeTapeMedia</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMinError>1</LimitMinError>"
+                "  <LimitMinWarning>2</LimitMinWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful TapeBackups" -Value $successSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning TapeBackups" -Value $warningSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed TapeBackups" -Value $failedSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running TapeBackups" -Value $runningSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Free-TapeMedia" -Value $FreeTapeMedia
 }
 #endregion:
 
