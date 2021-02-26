@@ -62,7 +62,7 @@ $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
 
-# Disable output of warning to prevent Veeam PS quirks
+# Disable output of warning to prevent Veeam PS quirks
 $WarningPreference = "SilentlyContinue"
 
 # Activate debug output if Verbose
@@ -97,19 +97,46 @@ if ($PSRemote) {
     $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
     if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
 
-    # Loading PSSnapin then retrieve commands
-    Invoke-Command -Session $RemoteSession -ScriptBlock {Add-PSSnapin VeeamPSSnapin; $WarningPreference = "SilentlyContinue"} -ErrorAction Stop # muting warning about powershell version
+    # Loading Module or PSSnapin then retrieve commands
+    Invoke-Command -Session $RemoteSession -ScriptBlock {
+        if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
+        try {
+            $Modules | Import-Module -WarningAction SilentlyContinue
+            }
+            catch {
+                throw "Failed to load Veeam Modules"
+                }
+        }
+        else {
+            Write-Host "No Veeam Modules found, Fallback to SnapIn."
+            try {
+                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+                }
+                catch {
+                    throw "Failed to load VeeamPSSnapIn and no Modules found"
+                    }
+        }
+    } -ErrorAction Stop
     Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
 } else {
 
-    if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
+    if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
         try {
-            Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+            $Modules | Import-Module -WarningAction SilentlyContinue
+            }
+            catch {
+                throw "Failed to load Veeam Modules"
+                }
         }
-        catch {
-            throw "Failed to load VeeamPSSnapIn"
+        else {
+            Write-Host "No Veeam Modules found, Fallback to SnapIn."
+            try {
+                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+                }
+                catch {
+                    throw "Failed to load VeeamPSSnapIn and no Modules found"
+                    }
         }
-    }
 }
 #endregion
 
