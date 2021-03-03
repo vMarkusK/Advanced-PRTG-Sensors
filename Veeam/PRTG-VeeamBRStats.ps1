@@ -214,7 +214,7 @@ Function Get-vPCRepoInfo {
         $outputAry
     }
 }
-
+# Get-vPCRepoInfoPre11 curently not in use (Multi Version support Pending)
 Function Get-vPCRepoInfoPre11 {
 [CmdletBinding()]
     param (
