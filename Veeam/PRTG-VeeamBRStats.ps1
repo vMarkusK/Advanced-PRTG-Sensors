@@ -75,8 +75,8 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 # http://www.checkyourlogs.net/?p=54583
 
 trap{
-    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
     Disconnect-VBRServer -ErrorAction SilentlyContinue
+    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
 
     Write-Error $_.ToString()
     Write-Error $_.ScriptStackTrace
