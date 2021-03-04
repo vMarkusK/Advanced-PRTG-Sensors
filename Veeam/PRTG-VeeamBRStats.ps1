@@ -626,8 +626,14 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
+if ($VbrVersion -ge 11) {
+    $RepoData = $repoList | Get-vPCRepoInfo
+}
+else {
+    $RepoData = $repoList | Get-vPCRepoInfoPre11
+}
 $RepoReport = @()
-ForEach ($RawRepo in ($repoList | Get-vPCRepoInfo)){
+ForEach ($RawRepo in $RepoData){
     If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
     ElseIf ($RawRepo.FreePercentage -lt $repoWarn) {$Status = "Warning"}
     ElseIf ($RawRepo.FreePercentage -eq "Unknown") {$Status = "Unknown"}
