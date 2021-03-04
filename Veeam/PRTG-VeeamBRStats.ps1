@@ -154,7 +154,8 @@ if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
     else {
         Write-Host "No Veeam Modules found, Fallback to SnapIn."
         try {
-            $VbrVersion = (Get-PSSnapin VeeamPSSnapin).Version            }
+            $VbrVersion = (Get-PSSnapin VeeamPSSnapin).Version.ToString()
+            }
             catch {
                 throw "Failed to get Version from Module or SnapIn"
                 }
