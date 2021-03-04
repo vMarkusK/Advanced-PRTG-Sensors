@@ -89,11 +89,10 @@ trap{
     Exit
 }
 
-#region: Start Load VEEAM Snapin (in local or remote session)
+#region: Start Load VEEAM Snapin / Module (in local or remote session)
 
 if ($PSRemote) {
     # Remoting on VBR server
-
     $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
     if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
 
@@ -119,7 +118,7 @@ if ($PSRemote) {
     } -ErrorAction Stop
     Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
 } else {
-
+    # Loading Module or PSSnapin
     if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
         try {
             $Modules | Import-Module -WarningAction SilentlyContinue
