@@ -139,7 +139,9 @@ if ($PSRemote) {
 }
 #endregion
 
-
+#region: Query Version
+$VbrVersion = (Get-PSSnapin VeeamPSSnapin).Version
+#endregions
 
 #region: Functions
 <#
