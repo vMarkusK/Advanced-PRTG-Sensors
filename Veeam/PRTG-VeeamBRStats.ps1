@@ -62,7 +62,7 @@ $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
 
-# Disable output of warning to prevent Veeam PS quirks
+# Disable output of warning to prevent Veeam PS quirks
 $WarningPreference = "SilentlyContinue"
 
 # Activate debug output if Verbose
@@ -75,8 +75,8 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 # http://www.checkyourlogs.net/?p=54583
 
 trap{
-    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
     Disconnect-VBRServer -ErrorAction SilentlyContinue
+    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
 
     Write-Error $_.ToString()
     Write-Error $_.ScriptStackTrace
@@ -89,31 +89,78 @@ trap{
     Exit
 }
 
-#region: Start Load VEEAM Snapin (in local or remote session)
+#region: Start Load VEEAM Snapin / Module (in local or remote session)
 
 if ($PSRemote) {
     # Remoting on VBR server
-
     $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
     if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
 
-    # Loading PSSnapin then retrieve commands
-    Invoke-Command -Session $RemoteSession -ScriptBlock {Add-PSSnapin VeeamPSSnapin; $WarningPreference = "SilentlyContinue"} -ErrorAction Stop # muting warning about powershell version
+    # Loading Module or PSSnapin then retrieve commands
+    Invoke-Command -Session $RemoteSession -ScriptBlock {
+        if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
+        try {
+            $Modules | Import-Module -WarningAction SilentlyContinue
+            }
+            catch {
+                throw "Failed to load Veeam Modules"
+                }
+        }
+        else {
+            Write-Host "No Veeam Modules found, Fallback to SnapIn."
+            try {
+                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+                }
+                catch {
+                    throw "Failed to load VeeamPSSnapIn and no Modules found"
+                    }
+        }
+    } -ErrorAction Stop
     Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
 } else {
-
-    if (!(Get-PSSnapin -Name VeeamPSSnapIn -ErrorAction SilentlyContinue)) {
+    # Loading Module or PSSnapin
+    if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
         try {
-            Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+            $Modules | Import-Module -WarningAction SilentlyContinue
+            }
+            catch {
+                throw "Failed to load Veeam Modules"
+                }
         }
-        catch {
-            throw "Failed to load VeeamPSSnapIn"
+        else {
+            Write-Host "No Veeam Modules found, Fallback to SnapIn."
+            try {
+                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
+                }
+                catch {
+                    throw "Failed to load VeeamPSSnapIn and no Modules found"
+                    }
         }
-    }
 }
 #endregion
 
-
+#region: Query Version
+if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
+    try {
+        switch ($Module.Version.ToString()) {
+            {$_ -eq "1.0"} {  [int]$VbrVersion = "11"  }
+            Default {[int]$VbrVersion = "11"}
+        }
+        }
+        catch {
+            throw "Failed to get Version from Module"
+            }
+    }
+    else {
+        Write-Host "No Veeam Modules found, Fallback to SnapIn."
+        try {
+            [int]$VbrVersion = (Get-PSSnapin VeeamPSSnapin).Version.ToString()
+            }
+            catch {
+                throw "Failed to get Version from Module or SnapIn"
+                }
+    }
+#endregions
 
 #region: Functions
 <#
@@ -122,6 +169,73 @@ http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
 #>
 
 Function Get-vPCRepoInfo {
+[CmdletBinding()]
+    param (
+        [Parameter(Position=0, ValueFromPipeline=$true)]
+        [PSObject[]]$Repository
+    )
+    Begin {
+        $outputAry = @()
+        Function New-RepoObject {param($name, $repohost, $path, $free, $total)
+        $repoObj = New-Object -TypeName PSObject -Property @{
+            Target = $name
+            RepoHost = $repohost
+                        Storepath = $path
+                        StorageFree = [Math]::Round([Decimal]$free/1GB,2)
+                        StorageTotal = [Math]::Round([Decimal]$total/1GB,2)
+                        FreePercentage = [Math]::Round(($free/$total)*100)
+            }
+        Return $repoObj | Select-Object Target, RepoHost, Storepath, StorageFree, StorageTotal, FreePercentage
+        }
+    }
+    Process {
+        Foreach ($r in $Repository) {
+            # Refresh Repository Size Info
+            try {
+                if ($PSRemote) {
+                    $SyncSpaceCode = {
+                        param($RepositoryName);
+                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
+                    }
+
+                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
+                } else {
+                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
+                }
+
+            }
+            catch {
+                Write-Debug "SyncSpaceInfoToDb Failed"
+                Write-Error $_.ToString()
+                Write-Error $_.ScriptStackTrace
+            }
+            If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
+                $HostName = ""
+            }
+            Else {
+                $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
+            }
+
+            if ($PSRemote) {
+            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
+            # To gather the info following construction should be used
+                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
+                    param($RepositoryName);
+                    (Get-VBRBackupRepository -Name $RepositoryName).info
+                } -ArgumentList $r.Name
+            }
+
+            Write-Debug $r.Info
+            $outputObj = New-RepoObject $r.Name $Hostname $r.FriendlyPath $r.GetContainer().CachedFreeSpace.InBytes $r.GetContainer().CachedTotalSpace.InBytes
+        }
+        $outputAry += $outputObj
+    }
+    End {
+        $outputAry
+    }
+}
+# Get-vPCRepoInfoPre11 curently not in use (Multi Version support Pending)
+Function Get-vPCRepoInfoPre11 {
 [CmdletBinding()]
     param (
         [Parameter(Position=0, ValueFromPipeline=$true)]
@@ -512,8 +626,14 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
+if ($VbrVersion -ge 11) {
+    $RepoData = $repoList | Get-vPCRepoInfo
+}
+else {
+    $RepoData = $repoList | Get-vPCRepoInfoPre11
+}
 $RepoReport = @()
-ForEach ($RawRepo in ($repoList | Get-vPCRepoInfo)){
+ForEach ($RawRepo in $RepoData){
     If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
     ElseIf ($RawRepo.FreePercentage -lt $repoWarn) {$Status = "Warning"}
     ElseIf ($RawRepo.FreePercentage -eq "Unknown") {$Status = "Unknown"}
@@ -541,7 +661,13 @@ if ($CloudRepos) {
             foreach ($CloudProviderRessource in $CloudProvider.Resources){
                 $CloudRepo = $CloudRepos | Where-Object {($_.CloudProvider.HostName -eq $CloudProvider.DNSName) -and ($_.Name -eq $CloudProviderRessource.RepositoryName)}
                 $totalSpaceGb = [Math]::Round([Decimal]$CloudProviderRessource.RepositoryAllocatedSpace/1KB,2)
-                $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
+                #$totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
+                if ($VbrVersion -ge 10) {
+                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
+                }
+                else {
+                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryStoragesSize($CloudRepo.Id.Guid))/1GB,2)
+                }
                 $totalFreeGb = [Math]::Round($totalSpaceGb - $totalUsedGb,2)
                 $freePercentage = [Math]::Round(($totalFreeGb/$totalSpaceGb)*100)
                 If ($freePercentage -lt $repoCritical) {$Status = "Critical"}
