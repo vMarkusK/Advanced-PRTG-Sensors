@@ -20,8 +20,8 @@
 
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 2021/03/15
-        VERSION: 2.0
+        LASTEDIT: 2021/03/16
+        VERSION: 2.0.1
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -97,7 +97,10 @@ if ($PSRemote) {
 
     # Loading Module or PSSnapin then retrieve commands
     Invoke-Command -Session $RemoteSession -ScriptBlock {
-        if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
+        # Make sure PSModulePath includes Veeam Console
+        $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
+        $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
+        if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
         try {
             $Modules | Import-Module -WarningAction SilentlyContinue
             }
@@ -118,7 +121,10 @@ if ($PSRemote) {
     Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
 } else {
     # Loading Module or PSSnapin
-    if ($Modules = Get-Module -ListAvailable -Name Veeam*) {
+    # Make sure PSModulePath includes Veeam Console
+    $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
+    $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
+    if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
         try {
             $Modules | Import-Module -WarningAction SilentlyContinue
             }
