@@ -20,8 +20,8 @@
 
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 02/08/2018
-        VERSION: 1.8
+        LASTEDIT: 2021/03/15
+        VERSION: 2.0
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -37,8 +37,7 @@
         .Link
         http://mycloudrevolution.com/
 
-
- #>
+#>
 #Requires -Version 3
 
 [cmdletbinding()]
