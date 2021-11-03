@@ -746,7 +746,7 @@ if($httppush)
 
     Add-Type -AssemblyName system.web
 
-    $Answer=Invoke-Webrequest -method "GET" -URI ("$($httppushssl)://$($server):$($port)/$($token)?content=$(([System.Web.HttpUtility]::UrlEncode($xmloutput)))") -usebasicparsing
+    $Answer=Invoke-Webrequest -method "GET" -URI ("$($httppushssl)://$($httpserver):$($httpport)/$($httptoken)?content=$(([System.Web.HttpUtility]::UrlEncode($xmloutput)))") -usebasicparsing
 
     if ($answer.Statuscode -ne 200)
         {
