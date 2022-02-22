@@ -21,7 +21,7 @@
         .Notes
         NAME:  PRTG-VeeamBRStats.ps1
         LASTEDIT: 2021/03/16
-        VERSION: 2.0.1
+        VERSION: LEGACY
         KEYWORDS: Veeam, PRTG
 
         CREDITS:

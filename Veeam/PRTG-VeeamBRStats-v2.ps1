@@ -19,9 +19,9 @@
         PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
 
         .Notes
-        NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 2021/03/16
-        VERSION: 2.0.1
+        NAME:  PRTG-VeeamBRStats-v2.ps1
+        LASTEDIT: 2022/02/22
+        VERSION: 2.0.2
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -33,6 +33,10 @@
 
         Thanks to Guy Zuercher for the Endpoint Backup part and a lot of other enhancmeents!
         https://github.com/gzuercher
+		
+		Thanks to Jannos-443 for the great capability to use HttpPush
+		https://github.com/Jannos-443
+
 
         .Link
         http://mycloudrevolution.com/
