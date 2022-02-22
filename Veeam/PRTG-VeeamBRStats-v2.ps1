@@ -53,7 +53,17 @@ param(
     [Parameter(Position=4, Mandatory=$false)]
         $selChann = "BCRE", # Inital channel selection
     [Parameter(Position=5, Mandatory=$false)]
-         [switch] $PSRemote
+         [switch] $PSRemote,
+    [Parameter(Position=6, Mandatory=$false)]
+         [switch] $httppush, #enables http push, usefull if you want to run the Script on the Veeam Server itself
+    [Parameter(Position=7, Mandatory=$false)]
+         [string] $httptoken, #http push token
+    [Parameter(Position=8, Mandatory=$false)]
+         [string] $httpserver, #http push prtg server hostname
+    [Parameter(Position=9, Mandatory=$false)]
+         [string] $httpport = "5050", #http push port (default 5050)
+    [Parameter(Position=10, Mandatory=$false)]
+         [boolean] $HttpPushUseSSL = $false #use https for http push
 )
 
 $includeBackup = $selChann.Contains("B")
@@ -375,7 +385,7 @@ $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
-Write-Output "<prtg>"
+$xmlOutput = '<prtg>'
 
 #region: Backup Jobs
 if ($includeBackup) {
@@ -391,62 +401,62 @@ if ($includeBackup) {
     $failedSessionsBk = @($seshListBk | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 
     $Count = $successSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Failed-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Running-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupRead</channel>"
-                "  <value>$TotalBackupRead</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupTransfer</channel>"
-                "  <value>$TotalBackupTransfer</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>TotalBackupRead</channel>
+                <value>$TotalBackupRead</value>
+                <unit>Custom</unit>
+                <customUnit>GB</customUnit>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>TotalBackupTransfer</channel>
+                <value>$TotalBackupTransfer</value>
+                <unit>Custom</unit>
+                <customUnit>GB</customUnit>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Backups" -Value $warningSessionsBk.Count
@@ -468,53 +478,53 @@ if ($includeCopy) {
     $IdleSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Idle" -and $_.JobType -eq "BackupSync"})
     $failedSessionsBkC = @($seshListBkC | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
     $Count = $successSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Successful-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Warning-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Failes-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Failed-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Running-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $IdleSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Idle-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Idle-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning BackupCopys" -Value $warningSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes BackupCopys" -Value $failsSessionsBkC.Count
@@ -534,46 +544,46 @@ if ($includeRepl) {
     $failedSessionsRepl = @($seshListRepl | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 
     $Count = $successSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Failed-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Running-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Replications" -Value $successSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Replications" -Value $warningSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Replications" -Value $failsSessionsRepl.Count
@@ -591,37 +601,37 @@ if ($includeEP) {
     $runningSessionsEP = @($allEPSesh | Where-Object{$_.State -eq "Working"})
 
     $Count = $successSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Running-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Seccessful Endpoints" -Value $successSessionsEP.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Endpoints" -Value $warningSessionsEP.Count
@@ -696,21 +706,21 @@ if ($CloudRepos) {
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
 $Free = $Repo."Free (%)"
-Write-Output "<result>"
-            "  <channel>$Name</channel>"
-            "  <value>$Free</value>"
-            "  <unit>Percent</unit>"
-            "  <showChart>1</showChart>"
-            "  <showTable>1</showTable>"
-            "  <LimitMinWarning>$repoWarn</LimitMinWarning>"
-            "  <LimitMinError>$repoCritical</LimitMinError>"
-            "  <LimitMode>1</LimitMode>"
-            "</result>"
+$xmlOutput = $xmlOutput + "<result>
+            <channel>$Name</channel>
+            <value>$Free</value>
+            <unit>Percent</unit>
+            <showChart>1</showChart>
+            <showTable>1</showTable>
+            <LimitMinWarning>$repoWarn</LimitMinWarning>
+            <LimitMinError>$repoCritical</LimitMinError>
+            <LimitMode>1</LimitMode>
+            </result>"
 }
 #endregion
 
 if($RemoteSession){Remove-PSSession -Session $RemoteSession}
-Write-Output "</prtg>"
+$xmlOutput = $xmlOutput + "</prtg>"
 
 #region: Debug
 if ($DebugPreference -eq "Inquire") {
@@ -718,4 +728,33 @@ if ($DebugPreference -eq "Inquire") {
         $SessionReport += $SessionObject
         $SessionReport
 }
+#endregion
+
+#region: Output
+
+$xmlOutput
+
+#endregion
+
+#region: Http Push
+if($httppush)
+    {
+    if($HttpPushUseSSL)
+        {$httppushssl = "https"}
+    else
+        {$httppushssl = "http"}
+
+    Add-Type -AssemblyName system.web
+
+    $Answer=Invoke-Webrequest -method "GET" -URI ("$($httppushssl)://$($httpserver):$($httpport)/$($httptoken)?content=$(([System.Web.HttpUtility]::UrlEncode($xmloutput)))") -usebasicparsing
+
+    if ($answer.Statuscode -ne 200)
+        {
+        Write-Output "<prtg>"
+        Write-Output " <error>1</error>"
+        Write-Output " <text>http push failed</text>"
+        Write-Output "</prtg>"
+        Exit
+        }
+    }
 #endregion
