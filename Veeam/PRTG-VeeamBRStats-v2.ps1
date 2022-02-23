@@ -9,14 +9,21 @@
         Switch to use PSRemoting instead of locally installed VeeamPSSnapin.
         Use "Get-Help about_remote_requirements" for more information
 
-        .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
+        .PARAMETER httppush
+        Enables http push, usefull if you want to run the Script on the Veeam Server itself
+        PRTG Sensor: HTTP Push Data Advanced
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
+        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
+        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
+
+        .EXAMPLE
+        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
+
+        .EXAMPLE
+        PRTG-VeeamBRStats-v2.ps1 -httppush:$true -httpserver 10.10.10.10 -httptoken 24A26A91-D292-4FF7-895D-B5E128A4D6C9 -httpport 5050
 
         .Notes
         NAME:  PRTG-VeeamBRStats-v2.ps1
@@ -33,10 +40,9 @@
 
         Thanks to Guy Zuercher for the Endpoint Backup part and a lot of other enhancmeents!
         https://github.com/gzuercher
-		
+
 		Thanks to Jannos-443 for the great capability to use HttpPush
 		https://github.com/Jannos-443
-
 
         .Link
         http://mycloudrevolution.com/
