@@ -130,6 +130,7 @@ if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
     try {
         switch ($Module.Version.ToString()) {
             {$_ -eq "1.0"} {  [int]$VbrVersion = "11"  }
+            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  }
             Default {[int]$VbrVersion = "11"}
         }
         }
