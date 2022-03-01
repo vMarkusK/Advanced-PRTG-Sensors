@@ -5,10 +5,6 @@
         .DESCRIPTION
         Advanced Sensor will Report Statistics about Backups during last 24 Hours and Actual Repository usage.
 
-        .PARAMETER PSRemote
-        Switch to use PSRemoting instead of locally installed VeeamPSSnapin.
-        Use "Get-Help about_remote_requirements" for more information
-
         .PARAMETER httppush
         Enables http push, usefull if you want to run the Script on the Veeam Server itself
         PRTG Sensor: HTTP Push Data Advanced
@@ -62,8 +58,6 @@ param(
         $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
         $selChann = "BCRE", # Inital channel selection
-    [Parameter(Position=5, Mandatory=$false)]
-         [switch] $PSRemote,
     [Parameter(Position=6, Mandatory=$false)]
          [switch] $httppush, #enables http push, usefull if you want to run the Script on the Veeam Server itself
     [Parameter(Position=7, Mandatory=$false)]
@@ -95,7 +89,6 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 
 trap{
     Disconnect-VBRServer -ErrorAction SilentlyContinue
-    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
 
     Write-Error $_.ToString()
     Write-Error $_.ScriptStackTrace
@@ -109,59 +102,27 @@ trap{
 }
 
 #region: Start Load VEEAM Snapin / Module (in local or remote session)
-
-if ($PSRemote) {
-    # Remoting on VBR server
-    $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
-    if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
-
-    # Loading Module or PSSnapin then retrieve commands
-    Invoke-Command -Session $RemoteSession -ScriptBlock {
-        # Make sure PSModulePath includes Veeam Console
-        $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
-        $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
-        if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
+# Loading Module or PSSnapin
+# Make sure PSModulePath includes Veeam Console
+$MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
+$env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
+if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
+    try {
+        $Modules | Import-Module -WarningAction SilentlyContinue
+        }
+        catch {
+            throw "Failed to load Veeam Modules"
+            }
+    }
+    else {
+        Write-Host "No Veeam Modules found, Fallback to SnapIn."
         try {
-            $Modules | Import-Module -WarningAction SilentlyContinue
+            Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
             }
             catch {
-                throw "Failed to load Veeam Modules"
+                throw "Failed to load VeeamPSSnapIn and no Modules found"
                 }
-        }
-        else {
-            Write-Host "No Veeam Modules found, Fallback to SnapIn."
-            try {
-                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
-                }
-                catch {
-                    throw "Failed to load VeeamPSSnapIn and no Modules found"
-                    }
-        }
-    } -ErrorAction Stop
-    Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
-} else {
-    # Loading Module or PSSnapin
-    # Make sure PSModulePath includes Veeam Console
-    $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
-    $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
-    if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
-        try {
-            $Modules | Import-Module -WarningAction SilentlyContinue
-            }
-            catch {
-                throw "Failed to load Veeam Modules"
-                }
-        }
-        else {
-            Write-Host "No Veeam Modules found, Fallback to SnapIn."
-            try {
-                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
-                }
-                catch {
-                    throw "Failed to load VeeamPSSnapIn and no Modules found"
-                    }
-        }
-}
+    }
 #endregion
 
 #region: Query Version
@@ -217,16 +178,7 @@ Function Get-vPCRepoInfo {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                if ($PSRemote) {
-                    $SyncSpaceCode = {
-                        param($RepositoryName);
-                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
-                    }
-
-                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
-                } else {
-                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-                }
+                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
 
             }
             catch {
@@ -239,15 +191,6 @@ Function Get-vPCRepoInfo {
             }
             Else {
                 $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
-            }
-
-            if ($PSRemote) {
-            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
-            # To gather the info following construction should be used
-                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
-                    param($RepositoryName);
-                    (Get-VBRBackupRepository -Name $RepositoryName).info
-                } -ArgumentList $r.Name
             }
 
             Write-Debug $r.Info
@@ -284,16 +227,7 @@ Function Get-vPCRepoInfoPre11 {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                if ($PSRemote) {
-                    $SyncSpaceCode = {
-                        param($RepositoryName);
-                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
-                    }
-
-                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
-                } else {
-                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-                }
+                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
 
             }
             catch {
@@ -306,15 +240,6 @@ Function Get-vPCRepoInfoPre11 {
             }
             Else {
                 $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
-            }
-
-            if ($PSRemote) {
-            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
-            # To gather the info following construction should be used
-                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
-                    param($RepositoryName);
-                    (Get-VBRBackupRepository -Name $RepositoryName).info
-                } -ArgumentList $r.Name
             }
 
             Write-Debug $r.Info
