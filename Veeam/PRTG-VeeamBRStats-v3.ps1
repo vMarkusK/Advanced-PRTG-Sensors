@@ -3,7 +3,7 @@
         PRTG Veeam Advanced Sensor
 
         .DESCRIPTION
-        Advanced Sensor will Report Statistics about Backups during last 24 Hours and Actual Repository usage.
+        Advanced Sensor will Report Statistics about Backups during last 24 Hours and current Repository usage.
 
         .PARAMETER httppush
         Enables http push, usefull if you want to run the Script on the Veeam Server itself
@@ -101,9 +101,9 @@ trap{
     Exit
 }
 
-#region: Start Load VEEAM Snapin / Module (in local or remote session)
-# Loading Module or PSSnapin
-# Make sure PSModulePath includes Veeam Console
+#region: Start Load VEEAM Snapin / Module
+## Loading Module or PSSnapin
+## Make sure PSModulePath includes Veeam Console
 $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
 $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
 if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
