@@ -53,5 +53,20 @@ Describe "Individual Sensor Tests" {
         "$moduleRoot\Veeam\PRTG-VeeamBRStats.ps1" | Should -FileContentMatch 'Write-Output "</prtg>"'
     }
 
+    #
+
+    It "PRTG-VeeamBRStats-v3 Script should include Debug Region" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats-v3.ps1" | Should -FileContentMatch "#region: Debug"
+    }
+
+    It "PRTG-VeeamBRStats-v3 Script should include Debug Example" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats-v3.ps1" | Should -FileContentMatch 'PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug'
+    }
+
+    It "PRTG-VeeamBRStats-v3 Script should include PRTG XML Root" {
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats-v3.ps1" | Should -FileContentMatch 'Write-Output "<prtg>"'
+        "$moduleRoot\Veeam\PRTG-VeeamBRStats-v3.ps1" | Should -FileContentMatch 'Write-Output "</prtg>"'
+    }
+
 }
 }
