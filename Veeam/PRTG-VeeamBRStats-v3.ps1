@@ -14,21 +14,21 @@
         PRTG Sensor: HTTP Push Data Advanced
 
         .EXAMPLE
-        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
-        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
 
         .EXAMPLE
-        PRTG-VeeamBRStats-v2.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
 
         .EXAMPLE
-        PRTG-VeeamBRStats-v2.ps1 -httppush:$true -httpserver 10.10.10.10 -httptoken 24A26A91-D292-4FF7-895D-B5E128A4D6C9 -httpport 5050
+        PRTG-VeeamBRStats-v3.ps1 -httppush:$true -httpserver 10.10.10.10 -httptoken 24A26A91-D292-4FF7-895D-B5E128A4D6C9 -httpport 5050
 
         .Notes
-        NAME:  PRTG-VeeamBRStats-v2.ps1
-        LASTEDIT: 2022/02/22
-        VERSION: 2.0.2
+        NAME:  PRTG-VeeamBRStats-v3.ps1
+        LASTEDIT: 2022/03/01
+        VERSION: 3.0.0
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
