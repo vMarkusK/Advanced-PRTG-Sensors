@@ -48,6 +48,13 @@ Veeam realted Sensors.
 
 + Veeam Backup & Replication - [Blog Post](http://mycloudrevolution.com/2016/03/21/veeam-prtg-sensor-reloaded/)
 
+    For the latest features please use the Script: `PRTG-VeeamBRStats-v3.ps1`
+    - PSx64.exe is not required any more
+    - [PRTG HTTP Push Sensor](https://www.paessler.com/manuals/prtg/http_push_data_advanced_sensor) can be used (less load on PRTG Probe / more secure from VBR perspective)
+
+    The `PRTG-VeeamBRStats.ps1` is marked as "legacy" and no further updates will happen to this version.
+
+
 ![PRTG-VeeamBRStats](/media/PRTG-VeeamBRStats.png)
 
 + Veeam Cloud Connect - [Blog Post](http://mycloudrevolution.com/2016/08/16/prtg-veeam-cloud-connect-monitoring/)

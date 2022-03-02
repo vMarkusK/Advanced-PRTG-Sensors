@@ -3,25 +3,28 @@
         PRTG Veeam Advanced Sensor
 
         .DESCRIPTION
-        Advanced Sensor will Report Statistics about Backups during last 24 Hours and Actual Repository usage.
+        Advanced Sensor will Report Statistics about Backups during last 24 Hours and current Repository usage.
 
-        .PARAMETER PSRemote
-        Switch to use PSRemoting instead of locally installed VeeamPSSnapin.
-        Use "Get-Help about_remote_requirements" for more information
-
-        .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local
+        .PARAMETER httppush
+        Enables http push, usefull if you want to run the Script on the Veeam Server itself
+        PRTG Sensor: HTTP Push Data Advanced
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local
 
         .EXAMPLE
-        PRTG-VeeamBRStats.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -Debug
+
+        .EXAMPLE
+        PRTG-VeeamBRStats-v3.ps1 -BRHost veeam01.lan.local -reportmode "Monthly" -repoCritical 80 -repoWarn 70 -selChann "BR"
+
+        .EXAMPLE
+        PRTG-VeeamBRStats-v3.ps1 -httppush:$true -httpserver 10.10.10.10 -httptoken 24A26A91-D292-4FF7-895D-B5E128A4D6C9 -httpport 5050
 
         .Notes
-        NAME:  PRTG-VeeamBRStats.ps1
-        LASTEDIT: 2021/03/16
-        VERSION: LEGACY
+        NAME:  PRTG-VeeamBRStats-v3.ps1
+        LASTEDIT: 2022/03/01
+        VERSION: 3.0.0
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -34,6 +37,9 @@
         Thanks to Guy Zuercher for the Endpoint Backup part and a lot of other enhancmeents!
         https://github.com/gzuercher
 
+		Thanks to Jannos-443 for the great capability to use HttpPush
+		https://github.com/Jannos-443
+
         .Link
         http://mycloudrevolution.com/
 
@@ -43,18 +49,99 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
         [string] $BRHost = "localhost",
     [Parameter(Position=1, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
         $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
     [Parameter(Position=2, Mandatory=$false)]
-        $repoCritical = 10,
+    [ValidateNotNullorEmpty()]
+    [ValidateRange(1,99)]
+        [int] $repoCritical = 10,
     [Parameter(Position=3, Mandatory=$false)]
-        $repoWarn = 20,
+    [ValidateNotNullorEmpty()]
+    [ValidateRange(1,99)]
+        [int] $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
-        $selChann = "BCRE", # Inital channel selection
-    [Parameter(Position=5, Mandatory=$false)]
-         [switch] $PSRemote
+    [ValidateNotNullorEmpty()]
+        [string] $selChann = "BCRE", # Inital channel selection
+    [Parameter(Position=6, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
+        [switch] $httppush, #enables http push, usefull if you want to run the Script on the Veeam Server itself
+    [Parameter(Position=7, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
+        [string] $httptoken, #http push token
+    [Parameter(Position=8, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
+        [string] $httpserver, #http push prtg server hostname
+    [Parameter(Position=9, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
+        [string] $httpport = "5050", #http push port (default 5050)
+    [Parameter(Position=10, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
+        [boolean] $HttpPushUseSSL = $false #use https for http push
 )
+
+# Catch all unhadled errors and close Pssession to avoid this issue:
+# Thanks for https://github.com/klmj for the idea
+# http://www.checkyourlogs.net/?p=54583
+
+trap{
+    Disconnect-VBRServer -ErrorAction SilentlyContinue
+
+    Write-Error $_.ToString()
+    Write-Error $_.ScriptStackTrace
+
+    $Output = "line:$($_.InvocationInfo.ScriptLineNumber.ToString()) char:$($_.InvocationInfo.OffsetInLine.ToString()) --- message: $($_.Exception.Message.ToString()) --- line: $($_.InvocationInfo.Line.ToString()) "
+    $Output = $Output.Replace("<","")
+    $Output = $Output.Replace(">","")
+    $Output = $Output.Replace("#","")
+    try
+        {
+        $Output = $Output.Substring(0,2000)
+        }
+    catch
+        {
+        }
+    Write-Output "<prtg>"
+    Write-Output "<error>1</error>"
+    Write-Output "<text>$Output</text>"
+    Write-Output "</prtg>"
+    Exit
+}
+
+#https://stackoverflow.com/questions/19055924/how-to-launch-64-bit-powershell-from-32-bit-cmd-exe
+#############################################################################
+#If Powershell is running the 32-bit version on a 64-bit machine, we
+#need to force powershell to run in 64-bit mode .
+#############################################################################
+if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64")
+    {
+    if ($myInvocation.Line)
+        {
+        [string]$output = &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile $myInvocation.Line
+        }
+    else
+        {
+        [string]$output = &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile -file "$($myInvocation.InvocationName)" $args
+        }
+
+    #Remove any text after </prtg>
+    try{
+        $output = $output.Substring(0,$output.LastIndexOf("</prtg>")+7)
+        }
+
+    catch
+        {
+        }
+
+    Write-Output $output
+    exit
+    }
+
+#############################################################################
+#End
+#############################################################################
 
 $includeBackup = $selChann.Contains("B")
 $includeCopy = $selChann.Contains("C")
@@ -64,84 +151,36 @@ $includeEP = $selChann.Contains("E")
 # Disable output of warning to prevent Veeam PS quirks
 $WarningPreference = "SilentlyContinue"
 
+# Error if there's anything going wrong
+$ErrorActionPreference = "Stop"
+
 # Activate debug output if Verbose
 if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
     $DebugPreference = 'Continue'
 }
 
-# Catch all unhadled errors and close Pssession to avoid this issue:
-# Thanks for https://github.com/klmj for the idea
-# http://www.checkyourlogs.net/?p=54583
-
-trap{
-    Disconnect-VBRServer -ErrorAction SilentlyContinue
-    if($RemoteSession){Remove-PSSession -Session $RemoteSession}
-
-    Write-Error $_.ToString()
-    Write-Error $_.ScriptStackTrace
-
-    Write-Output "<prtg>"
-    Write-Output " <error>1</error>"
-    Write-Output " <text>$($_.ToString())</text>"
-    Write-Output "</prtg>"
-
-    Exit
-}
-
-#region: Start Load VEEAM Snapin / Module (in local or remote session)
-
-if ($PSRemote) {
-    # Remoting on VBR server
-    $RemoteSession = New-PSSession -Authentication Kerberos -ComputerName $BRHost
-    if (-not $RemoteSession){throw "Cannot open remote session on '$BRHost' with user '$env:USERNAME'"}
-
-    # Loading Module or PSSnapin then retrieve commands
-    Invoke-Command -Session $RemoteSession -ScriptBlock {
-        # Make sure PSModulePath includes Veeam Console
-        $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
-        $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
-        if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
+#region: Start Load VEEAM Snapin / Module
+## Loading Module or PSSnapin
+## Make sure PSModulePath includes Veeam Console
+$MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
+$env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
+if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
+    try {
+        $Modules | Import-Module -WarningAction SilentlyContinue
+        }
+        catch {
+            throw "Failed to load Veeam Modules"
+            }
+    }
+    else {
+        Write-Host "No Veeam Modules found, Fallback to SnapIn."
         try {
-            $Modules | Import-Module -WarningAction SilentlyContinue
+            Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
             }
             catch {
-                throw "Failed to load Veeam Modules"
+                throw "Failed to load VeeamPSSnapIn and no Modules found"
                 }
-        }
-        else {
-            Write-Host "No Veeam Modules found, Fallback to SnapIn."
-            try {
-                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
-                }
-                catch {
-                    throw "Failed to load VeeamPSSnapIn and no Modules found"
-                    }
-        }
-    } -ErrorAction Stop
-    Import-PSSession -Session $RemoteSession -Module VeeamPSSnapin -ErrorAction Stop | Out-Null
-} else {
-    # Loading Module or PSSnapin
-    # Make sure PSModulePath includes Veeam Console
-    $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
-    $env:PSModulePath = $env:PSModulePath + "$([System.IO.Path]::PathSeparator)$MyModulePath"
-    if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
-        try {
-            $Modules | Import-Module -WarningAction SilentlyContinue
-            }
-            catch {
-                throw "Failed to load Veeam Modules"
-                }
-        }
-        else {
-            Write-Host "No Veeam Modules found, Fallback to SnapIn."
-            try {
-                Add-PSSnapin -PassThru VeeamPSSnapIn -ErrorAction Stop | Out-Null
-                }
-                catch {
-                    throw "Failed to load VeeamPSSnapIn and no Modules found"
-                    }
-        }
-}
+    }
 #endregion
 
 #region: Query Version
@@ -149,6 +188,7 @@ if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
     try {
         switch ($Module.Version.ToString()) {
             {$_ -eq "1.0"} {  [int]$VbrVersion = "11"  }
+            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  }
             Default {[int]$VbrVersion = "11"}
         }
         }
@@ -197,16 +237,7 @@ Function Get-vPCRepoInfo {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                if ($PSRemote) {
-                    $SyncSpaceCode = {
-                        param($RepositoryName);
-                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
-                    }
-
-                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
-                } else {
-                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-                }
+                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
 
             }
             catch {
@@ -219,15 +250,6 @@ Function Get-vPCRepoInfo {
             }
             Else {
                 $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
-            }
-
-            if ($PSRemote) {
-            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
-            # To gather the info following construction should be used
-                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
-                    param($RepositoryName);
-                    (Get-VBRBackupRepository -Name $RepositoryName).info
-                } -ArgumentList $r.Name
             }
 
             Write-Debug $r.Info
@@ -264,16 +286,7 @@ Function Get-vPCRepoInfoPre11 {
         Foreach ($r in $Repository) {
             # Refresh Repository Size Info
             try {
-                if ($PSRemote) {
-                    $SyncSpaceCode = {
-                        param($RepositoryName);
-                        [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb((Get-VBRBackupRepository -Name $RepositoryName), $true)
-                    }
-
-                    Invoke-Command -Session $RemoteSession -ScriptBlock $SyncSpaceCode -ArgumentList $r.Name
-                } else {
-                    [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-                }
+                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
 
             }
             catch {
@@ -286,15 +299,6 @@ Function Get-vPCRepoInfoPre11 {
             }
             Else {
                 $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
-            }
-
-            if ($PSRemote) {
-            # When veeam commands are invoked remotly they are serialized during transfer. The info property become not object but string.
-            # To gather the info following construction should be used
-                $r.info = Invoke-Command -Session $RemoteSession -HideComputerName -ScriptBlock {
-                    param($RepositoryName);
-                    (Get-VBRBackupRepository -Name $RepositoryName).info
-                } -ArgumentList $r.Name
             }
 
             Write-Debug $r.Info
@@ -375,7 +379,7 @@ $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
-Write-Output "<prtg>"
+$xmlOutput = '<prtg>'
 
 #region: Backup Jobs
 if ($includeBackup) {
@@ -391,62 +395,62 @@ if ($includeBackup) {
     $failedSessionsBk = @($seshListBk | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 
     $Count = $successSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Failed-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsBk.Count
-    Write-Output "<result>"
-                "  <channel>Running-Backups</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupRead</channel>"
-                "  <value>$TotalBackupRead</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupTransfer</channel>"
-                "  <value>$TotalBackupTransfer</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Backups</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>TotalBackupRead</channel>
+                <value>$TotalBackupRead</value>
+                <unit>Custom</unit>
+                <customUnit>GB</customUnit>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>TotalBackupTransfer</channel>
+                <value>$TotalBackupTransfer</value>
+                <unit>Custom</unit>
+                <customUnit>GB</customUnit>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Backups" -Value $warningSessionsBk.Count
@@ -468,53 +472,53 @@ if ($includeCopy) {
     $IdleSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Idle" -and $_.JobType -eq "BackupSync"})
     $failedSessionsBkC = @($seshListBkC | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
     $Count = $successSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Successful-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Warning-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Failes-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Failed-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Running-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $IdleSessionsBkC.Count
-    Write-Output "<result>"
-                "  <channel>Idle-BackupCopys</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Idle-BackupCopys</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning BackupCopys" -Value $warningSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes BackupCopys" -Value $failsSessionsBkC.Count
@@ -534,46 +538,46 @@ if ($includeRepl) {
     $failedSessionsRepl = @($seshListRepl | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
 
     $Count = $successSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failedSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Failed-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failed-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsRepl.Count
-    Write-Output "<result>"
-                "  <channel>Running-Replications</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Replications</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Replications" -Value $successSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Replications" -Value $warningSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Replications" -Value $failsSessionsRepl.Count
@@ -591,37 +595,37 @@ if ($includeEP) {
     $runningSessionsEP = @($allEPSesh | Where-Object{$_.State -eq "Working"})
 
     $Count = $successSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Successful-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Successful-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
     $Count = $warningSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Warning-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Warning-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxWarning>0</LimitMaxWarning>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $failsSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Failes-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
-                "  <LimitMode>1</LimitMode>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Failes-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                <LimitMaxError>0</LimitMaxError>
+                <LimitMode>1</LimitMode>
+                </result>"
     $Count = $runningSessionsEP.Count
-    Write-Output "<result>"
-                "  <channel>Running-Endpoints</channel>"
-                "  <value>$Count</value>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
+    $xmlOutput = $xmlOutput + "<result>
+                <channel>Running-Endpoints</channel>
+                <value>$Count</value>
+                <showChart>1</showChart>
+                <showTable>1</showTable>
+                </result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Seccessful Endpoints" -Value $successSessionsEP.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Endpoints" -Value $warningSessionsEP.Count
@@ -696,21 +700,21 @@ if ($CloudRepos) {
 foreach ($Repo in $RepoReport){
 $Name = "REPO - " + $Repo."Repository Name"
 $Free = $Repo."Free (%)"
-Write-Output "<result>"
-            "  <channel>$Name</channel>"
-            "  <value>$Free</value>"
-            "  <unit>Percent</unit>"
-            "  <showChart>1</showChart>"
-            "  <showTable>1</showTable>"
-            "  <LimitMinWarning>$repoWarn</LimitMinWarning>"
-            "  <LimitMinError>$repoCritical</LimitMinError>"
-            "  <LimitMode>1</LimitMode>"
-            "</result>"
+$xmlOutput = $xmlOutput + "<result>
+            <channel>$Name</channel>
+            <value>$Free</value>
+            <unit>Percent</unit>
+            <showChart>1</showChart>
+            <showTable>1</showTable>
+            <LimitMinWarning>$repoWarn</LimitMinWarning>
+            <LimitMinError>$repoCritical</LimitMinError>
+            <LimitMode>1</LimitMode>
+            </result>"
 }
 #endregion
 
 if($RemoteSession){Remove-PSSession -Session $RemoteSession}
-Write-Output "</prtg>"
+$xmlOutput = $xmlOutput + "</prtg>"
 
 #region: Debug
 if ($DebugPreference -eq "Inquire") {
@@ -718,4 +722,34 @@ if ($DebugPreference -eq "Inquire") {
         $SessionReport += $SessionObject
         $SessionReport
 }
+#endregion
+
+#region: Http Push
+if($httppush)
+    {
+    if($HttpPushUseSSL)
+        {$httppushssl = "https"}
+    else
+        {$httppushssl = "http"}
+
+    Add-Type -AssemblyName system.web
+
+    $Answer=Invoke-Webrequest -method "GET" -URI ("$($httppushssl)://$($httpserver):$($httpport)/$($httptoken)?content=$(([System.Web.HttpUtility]::UrlEncode($xmloutput)))") -usebasicparsing
+
+    if ($answer.Statuscode -ne 200)
+        {
+        Write-Output "<prtg>"
+        Write-Output "<error>1</error>"
+        Write-Output "<text>http push failed</text>"
+        Write-Output "</prtg>"
+        Exit
+        }
+    }
+#endregion
+
+
+#region: Output
+
+Write-Output $xmlOutput
+
 #endregion
