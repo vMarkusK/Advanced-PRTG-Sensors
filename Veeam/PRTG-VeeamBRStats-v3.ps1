@@ -57,11 +57,11 @@ param(
     [Parameter(Position=2, Mandatory=$false)]
     [ValidateNotNullorEmpty()]
     [ValidateRange(1,99)]
-        [integer] $repoCritical = 10,
+        [int] $repoCritical = 10,
     [Parameter(Position=3, Mandatory=$false)]
     [ValidateNotNullorEmpty()]
     [ValidateRange(1,99)]
-        [integer] $repoWarn = 20,
+        [int] $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
     [ValidateNotNullorEmpty()]
         [string] $selChann = "BCRE", # Inital channel selection
