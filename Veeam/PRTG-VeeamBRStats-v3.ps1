@@ -70,19 +70,6 @@ param(
          [boolean] $HttpPushUseSSL = $false #use https for http push
 )
 
-$includeBackup = $selChann.Contains("B")
-$includeCopy = $selChann.Contains("C")
-$includeRepl = $selChann.Contains("R")
-$includeEP = $selChann.Contains("E")
-
-# Disable output of warning to prevent Veeam PS quirks
-$WarningPreference = "SilentlyContinue"
-
-# Activate debug output if Verbose
-if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
-    $DebugPreference = 'Continue'
-}
-
 # Catch all unhadled errors and close Pssession to avoid this issue:
 # Thanks for https://github.com/klmj for the idea
 # http://www.checkyourlogs.net/?p=54583
@@ -93,12 +80,71 @@ trap{
     Write-Error $_.ToString()
     Write-Error $_.ScriptStackTrace
 
+    $Output = "line:$($_.InvocationInfo.ScriptLineNumber.ToString()) char:$($_.InvocationInfo.OffsetInLine.ToString()) --- message: $($_.Exception.Message.ToString()) --- line: $($_.InvocationInfo.Line.ToString()) "
+    $Output = $Output.Replace("<","")
+    $Output = $Output.Replace(">","")
+    $Output = $Output.Replace("#","")
+    try
+        {
+        $Output = $Output.Substring(0,2000)
+        }
+    catch
+        {
+        }
     Write-Output "<prtg>"
-    Write-Output " <error>1</error>"
-    Write-Output " <text>$($_.ToString())</text>"
+    Write-Output "<error>1</error>"
+    Write-Output "<text>$Output</text>"
     Write-Output "</prtg>"
-
     Exit
+}
+
+#https://stackoverflow.com/questions/19055924/how-to-launch-64-bit-powershell-from-32-bit-cmd-exe
+#############################################################################
+#If Powershell is running the 32-bit version on a 64-bit machine, we 
+#need to force powershell to run in 64-bit mode .
+#############################################################################
+if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") 
+    {
+    if ($myInvocation.Line) 
+        {
+        [string]$output = &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile $myInvocation.Line
+        }
+    else
+        {
+        [string]$output = &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile -file "$($myInvocation.InvocationName)" $args
+        }
+
+    #Remove any text after </prtg>
+    try{
+        $output = $output.Substring(0,$output.LastIndexOf("</prtg>")+7)
+        }
+
+    catch
+        {
+        }
+
+    Write-Output $output
+    exit
+    }
+
+#############################################################################
+#End
+#############################################################################
+
+$includeBackup = $selChann.Contains("B")
+$includeCopy = $selChann.Contains("C")
+$includeRepl = $selChann.Contains("R")
+$includeEP = $selChann.Contains("E")
+
+# Disable output of warning to prevent Veeam PS quirks
+$WarningPreference = "SilentlyContinue"
+
+# Error if there's anything going wrong
+$ErrorActionPreference = "Stop"
+
+# Activate debug output if Verbose
+if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
+    $DebugPreference = 'Continue'
 }
 
 #region: Start Load VEEAM Snapin / Module
@@ -666,12 +712,6 @@ if ($DebugPreference -eq "Inquire") {
 }
 #endregion
 
-#region: Output
-
-$xmlOutput
-
-#endregion
-
 #region: Http Push
 if($httppush)
     {
@@ -687,10 +727,17 @@ if($httppush)
     if ($answer.Statuscode -ne 200)
         {
         Write-Output "<prtg>"
-        Write-Output " <error>1</error>"
-        Write-Output " <text>http push failed</text>"
+        Write-Output "<error>1</error>"
+        Write-Output "<text>http push failed</text>"
         Write-Output "</prtg>"
         Exit
         }
     }
+#endregion
+
+
+#region: Output
+
+Write-Output $xmlOutput
+
 #endregion
