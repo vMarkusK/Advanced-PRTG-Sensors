@@ -49,25 +49,37 @@
 [cmdletbinding()]
 param(
     [Parameter(Position=0, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
         [string] $BRHost = "localhost",
     [Parameter(Position=1, Mandatory=$false)]
+    [ValidateNotNullorEmpty()]
         $reportMode = "24", # Weekly, Monthly as String or Hour as Integer
     [Parameter(Position=2, Mandatory=$false)]
-        $repoCritical = 10,
+    [ValidateNotNullorEmpty()]
+    [ValidateRange(1,99)]
+        [integer] $repoCritical = 10,
     [Parameter(Position=3, Mandatory=$false)]
-        $repoWarn = 20,
+    [ValidateNotNullorEmpty()]
+    [ValidateRange(1,99)]
+        [integer] $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
-        $selChann = "BCRE", # Inital channel selection
+    [ValidateNotNullorEmpty()]
+        [string] $selChann = "BCRE", # Inital channel selection
     [Parameter(Position=6, Mandatory=$false)]
-         [switch] $httppush, #enables http push, usefull if you want to run the Script on the Veeam Server itself
+    [ValidateNotNullorEmpty()]
+        [switch] $httppush, #enables http push, usefull if you want to run the Script on the Veeam Server itself
     [Parameter(Position=7, Mandatory=$false)]
-         [string] $httptoken, #http push token
+    [ValidateNotNullorEmpty()]
+        [string] $httptoken, #http push token
     [Parameter(Position=8, Mandatory=$false)]
-         [string] $httpserver, #http push prtg server hostname
+    [ValidateNotNullorEmpty()]
+        [string] $httpserver, #http push prtg server hostname
     [Parameter(Position=9, Mandatory=$false)]
-         [string] $httpport = "5050", #http push port (default 5050)
+    [ValidateNotNullorEmpty()]
+        [string] $httpport = "5050", #http push port (default 5050)
     [Parameter(Position=10, Mandatory=$false)]
-         [boolean] $HttpPushUseSSL = $false #use https for http push
+    [ValidateNotNullorEmpty()]
+        [boolean] $HttpPushUseSSL = $false #use https for http push
 )
 
 # Catch all unhadled errors and close Pssession to avoid this issue:
@@ -100,12 +112,12 @@ trap{
 
 #https://stackoverflow.com/questions/19055924/how-to-launch-64-bit-powershell-from-32-bit-cmd-exe
 #############################################################################
-#If Powershell is running the 32-bit version on a 64-bit machine, we 
+#If Powershell is running the 32-bit version on a 64-bit machine, we
 #need to force powershell to run in 64-bit mode .
 #############################################################################
-if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") 
+if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64")
     {
-    if ($myInvocation.Line) 
+    if ($myInvocation.Line)
         {
         [string]$output = &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NonInteractive -NoProfile $myInvocation.Line
         }
