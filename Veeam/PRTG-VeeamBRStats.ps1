@@ -60,6 +60,9 @@ $includeBackup = $selChann.Contains("B")
 $includeCopy = $selChann.Contains("C")
 $includeRepl = $selChann.Contains("R")
 $includeEP = $selChann.Contains("E")
+$includeFileCopy = $selChann.Contains("F")
+$includeTape = $selChann.Contains("T")
+$includeNAS = $selChann.Contains("N") #Available V10+
 
 # Disable output of warning to prevent Veeam PS quirks
 $WarningPreference = "SilentlyContinue"
@@ -375,15 +378,52 @@ $allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
+#region: Collect Tape Sessions
+if ($includeTape){
+    $TapeJobs = Get-VBRTapeJob #Get Tape Jobs
+    $allSeshTape = $null
+
+    foreach($TapeJob in $TapeJobs){ #Get Sessions for each Tape Job
+        $TapeSeshPerJob = Get-VBRSession -Job $TapeJob
+        $allSeshTape = $allSeshTape + $TapeSeshPerJob
+
+        }
+}
+#endregion
+
 Write-Output "<prtg>"
+
+#region: Data Transfer/Read
+$TotalBackupTransfer = 0
+$TotalBackupRead = 0
+$allSeshLast24 = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck))}) 
+$allSeshLast24 | ForEach-Object{$TotalBackupTransfer += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
+$allSeshLast24 | ForEach-Object{$TotalBackupRead += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
+
+Write-Output "<result>"
+            "  <channel>TotalBackupRead</channel>"
+            "  <value>$TotalBackupRead</value>"
+            "  <unit>Custom</unit>"
+            "  <customUnit>GB</customUnit>"
+            "  <showChart>1</showChart>"
+            "  <showTable>1</showTable>"
+            "</result>"
+Write-Output "<result>"
+            "  <channel>TotalBackupTransfer</channel>"
+            "  <value>$TotalBackupTransfer</value>"
+            "  <unit>Custom</unit>"
+            "  <customUnit>GB</customUnit>"
+            "  <showChart>1</showChart>"
+            "  <showTable>1</showTable>"
+            "</result>"
+
+$SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Transfer" -Value $TotalBackupTransfer
+$SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Read" -Value $TotalBackupRead
+#endregion
 
 #region: Backup Jobs
 if ($includeBackup) {
     $seshListBk = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Backup"})           # Gather all Backup sessions within timeframe
-    $TotalBackupTransfer = 0
-    $TotalBackupRead = 0
-    $seshListBk | ForEach-Object{$TotalBackupTransfer += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 0))}
-    $seshListBk | ForEach-Object{$TotalBackupRead += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 0))}
     $successSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Success"})
     $warningSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Warning"})
     $failsSessionsBk = @($seshListBk | Where-Object{$_.Result -eq "Failed"})
@@ -403,7 +443,7 @@ if ($includeBackup) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failsSessionsBk.Count
@@ -412,7 +452,7 @@ if ($includeBackup) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failedSessionsBk.Count
@@ -421,7 +461,7 @@ if ($includeBackup) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $runningSessionsBk.Count
@@ -431,30 +471,126 @@ if ($includeBackup) {
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
                 "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupRead</channel>"
-                "  <value>$TotalBackupRead</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
-    Write-Output "<result>"
-                "  <channel>TotalBackupTransfer</channel>"
-                "  <value>$TotalBackupTransfer</value>"
-                "  <unit>Custom</unit>"
-                "  <customUnit>GB</customUnit>"
-                "  <showChart>1</showChart>"
-                "  <showTable>1</showTable>"
-                "</result>"
 
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Backups" -Value $successSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Backups" -Value $warningSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Backups" -Value $failsSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed Backups" -Value $failedSessionsBk.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Backups" -Value $runningSessionsBk.Count
-    $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Transfer" -Value $TotalBackupTransfer
-    $SessionObject | Add-Member -MemberType NoteProperty -Name "Total Backup Read" -Value $TotalBackupRead
+}
+#endregion:
+
+#region: File Copy Jobs
+if ($includeFileCopy) {
+    $seshListFile = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "Copy"})      # Gather all File Copy sessions within timeframe
+    $successSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Success"})
+    $warningSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Warning"})
+    $failsSessionsFile = @($seshListFile | Where-Object{$_.Result -eq "Failed"})
+    $failedSessionsFile = @($seshListFile | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+    
+    $Count = $successSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Successful-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Warning-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failsSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Failes-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Failed-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsFile.Count
+    Write-Output "<result>"
+                "  <channel>Running-FileCopies</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning FileCopies" -Value $warningSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes FileCopies" -Value $failsSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed FileCopies" -Value $failedSessionsFile.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running FileCopies" -Value $runningSessionsFile.Count
+}
+#endregion:
+
+#region: NAS Jobs
+if ($includeNAS) {
+    $seshListNAS = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "NASBackup"})      # Gather all NASBackup sessions within timeframe
+    $successSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Success"})
+    $warningSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Warning"})
+    $failsSessionsNAS = @($seshListNAS | Where-Object{$_.Result -eq "Failed"})
+    $failedSessionsNAS = @($seshListNAS | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+    
+    $Count = $successSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Successful-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Warning-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failsSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Failes-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Failed-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsNAS.Count
+    Write-Output "<result>"
+                "  <channel>Running-NAS-Backups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning NAS-Backups" -Value $warningSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes NAS-Backups" -Value $failsSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed NAS-Backups" -Value $failedSessionsNAS.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running NAS-Backups" -Value $runningSessionsNAS.Count
 }
 #endregion:
 
@@ -467,6 +603,7 @@ if ($includeCopy) {
     $runningSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Working" -and $_.JobType -eq "BackupSync"})
     $IdleSessionsBkC = @($allSesh | Where-Object{$_.State -eq "Idle" -and $_.JobType -eq "BackupSync"})
     $failedSessionsBkC = @($seshListBkC | Where-Object{($_.Result -eq "Failed") -and ($_.WillBeRetried -ne "True")})
+    
     $Count = $successSessionsBkC.Count
     Write-Output "<result>"
                 "  <channel>Successful-BackupCopys</channel>"
@@ -480,7 +617,7 @@ if ($includeCopy) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failsSessionsBkC.Count
@@ -489,7 +626,7 @@ if ($includeCopy) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failedSessionsBkC.Count
@@ -498,7 +635,7 @@ if ($includeCopy) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $runningSessionsBkC.Count
@@ -546,7 +683,7 @@ if ($includeRepl) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failsSessionsRepl.Count
@@ -555,7 +692,7 @@ if ($includeRepl) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failedSessionsRepl.Count
@@ -564,7 +701,7 @@ if ($includeRepl) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $runningSessionsRepl.Count
@@ -574,6 +711,7 @@ if ($includeRepl) {
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
                 "</result>"
+                
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful Replications" -Value $successSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning Replications" -Value $warningSessionsRepl.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Replications" -Value $failsSessionsRepl.Count
@@ -603,7 +741,7 @@ if ($includeEP) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxWarning>0</LimitMaxWarning>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $failsSessionsEP.Count
@@ -612,7 +750,7 @@ if ($includeEP) {
                 "  <value>$Count</value>"
                 "  <showChart>1</showChart>"
                 "  <showTable>1</showTable>"
-                "  <LimitMaxError>0</LimitMaxError>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
                 "  <LimitMode>1</LimitMode>"
                 "</result>"
     $Count = $runningSessionsEP.Count
@@ -628,6 +766,102 @@ if ($includeEP) {
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes Endpoints" -Value $failsSessionsEP.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Running Endpoints" -Value $runningSessionsEP.Count
 }
+#endregion:
+
+#region: Tape Backup
+if ($includeTape) {
+#Get Free Tapes
+$FreeTapeMedia = Get-VBRTapeMedium -MediaPool "Free"
+
+#Unrecognized Tapes
+#For us one is okay because of the Cleaning Tape
+$UnrecognizedMedia = Get-VBRTapeMedium -MediaPool "Unrecognized"
+
+#Tape Jobs Running
+$runningSessionsTape = $allSeshTape | where {$_.state -ne "stopped"}
+
+#Tape Jobs Failed Last 24h
+$failedSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Failed"))}
+
+#Tape Jobs Warning Last 24h
+$warningSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Warning"))}
+
+#Tape Jobs Success Last 24h
+$successSessionsTape = $allSeshTape | where {(($_.CreationTime) -ge ((get-date).AddHours(-$HourstoCheck)) -and ($_.Result -eq "Success"))}
+
+    $Count = $successSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Successful-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $warningSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Warning-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxWarning>0.1</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $failedSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Failed-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $runningSessionsTape.Count
+    Write-Output "<result>"
+                "  <channel>Running-TapeBackups</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "</result>"
+    $Count = $FreeTapeMedia.Count
+    Write-Output "<result>"
+                "  <channel>Tapes-Free</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMinError>0.5</LimitMinError>"
+                "  <LimitMinWarning>1.5</LimitMinWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+    $Count = $UnrecognizedMedia.Count
+    Write-Output "<result>"
+                "  <channel>Tapes-Unrecognized</channel>"
+                "  <value>$Count</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>1.5</LimitMaxError>"
+                "  <LimitMaxWarning>0.5</LimitMaxWarning>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
+
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Successful TapeBackups" -Value $successSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning TapeBackups" -Value $warningSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed TapeBackups" -Value $failedSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Running TapeBackups" -Value $runningSessionsTape.Count
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Tapes-Free" -Value $FreeTapeMedia
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Tapes-Unrecognized" -Value $UnrecognizedMedia
+}
+#endregion:
+
+#region: Hanging Jobs
+    $HangingJobsHours = 24
+    $HangingJobs = $allsesh | where {($_.State -ne "Stopped") -and ($_.EndTime -eq $null) -and ($_.CreationTime -le ((get-date).AddHours(-$HangingJobsHours)))}
+    Write-Output "<result>"
+                "  <channel>HangingJobs</channel>"
+                "  <value>$($HangingJobs.Count)</value>"
+                "  <showChart>1</showChart>"
+                "  <showTable>1</showTable>"
+                "  <LimitMaxError>0.1</LimitMaxError>"
+                "  <LimitMode>1</LimitMode>"
+                "</result>"
 #endregion:
 
 #region: Repository
