@@ -188,7 +188,7 @@ if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
     try {
         switch ($Module.Version.ToString()) {
             {$_ -eq "1.0"} {  [int]$VbrVersion = "11"  }
-            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  }
+            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  } # No new Module Version for v12 GA. So, script runs in v11 mode
             Default {[int]$VbrVersion = "11"}
         }
         }
