@@ -595,12 +595,7 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
-if ($VbrVersion -ge 11) {
-    $RepoData = $repoList | Get-vPCRepoInfo
-}
-else {
-    $RepoData = $repoList | Get-vPCRepoInfoPre11
-}
+$RepoData = $repoList | Get-vPCRepoInfo
 $RepoReport = @()
 ForEach ($RawRepo in $RepoData){
     If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
@@ -631,12 +626,7 @@ if ($CloudRepos) {
                 $CloudRepo = $CloudRepos | Where-Object {($_.CloudProvider.HostName -eq $CloudProvider.DNSName) -and ($_.Name -eq $CloudProviderRessource.RepositoryName)}
                 $totalSpaceGb = [Math]::Round([Decimal]$CloudProviderRessource.RepositoryAllocatedSpace/1KB,2)
                 #$totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
-                if ($VbrVersion -ge 10) {
-                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
-                }
-                else {
-                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryStoragesSize($CloudRepo.Id.Guid))/1GB,2)
-                }
+                $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
                 $totalFreeGb = [Math]::Round($totalSpaceGb - $totalUsedGb,2)
                 $freePercentage = [Math]::Round(($totalFreeGb/$totalSpaceGb)*100)
                 If ($freePercentage -lt $repoCritical) {$Status = "Critical"}
