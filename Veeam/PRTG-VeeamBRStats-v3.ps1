@@ -82,10 +82,13 @@ param(
         [boolean] $HttpPushUseSSL = $false #use https for http push
 )
 
-# Catch all unhadled errors and close Pssession to avoid this issue:
-# Thanks for https://github.com/klmj for the idea
-# http://www.checkyourlogs.net/?p=54583
+#region: Catch all unhadled errors
 
+<#
+Catch all unhadled errors and close Pssession to avoid this issue:
+Thanks for https://github.com/klmj for the idea
+http://www.checkyourlogs.net/?p=54583
+#>
 trap{
     Disconnect-VBRServer -ErrorAction SilentlyContinue
 
@@ -109,12 +112,15 @@ trap{
     Write-Output "</prtg>"
     Exit
 }
+#endregion
 
-#https://stackoverflow.com/questions/19055924/how-to-launch-64-bit-powershell-from-32-bit-cmd-exe
-#############################################################################
-#If Powershell is running the 32-bit version on a 64-bit machine, we
-#need to force powershell to run in 64-bit mode .
-#############################################################################
+#region: running the 32-bit version on a 64-bit
+
+<#
+https://stackoverflow.com/questions/19055924/how-to-launch-64-bit-powershell-from-32-bit-cmd-exe
+If Powershell is running the 32-bit version on a 64-bit machine, we
+need to force powershell to run in 64-bit mode .
+#>
 if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64")
     {
     if ($myInvocation.Line)
@@ -138,10 +144,7 @@ if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64")
     Write-Output $output
     exit
     }
-
-#############################################################################
-#End
-#############################################################################
+#endregion
 
 $includeBackup = $selChann.Contains("B")
 $includeCopy = $selChann.Contains("C")
@@ -160,6 +163,7 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 }
 
 #region: Start Load VEEAM Snapin / Module
+
 ## Loading Module or PSSnapin
 ## Make sure PSModulePath includes Veeam Console
 $MyModulePath = "C:\Program Files\Veeam\Backup and Replication\Console\"
@@ -184,11 +188,12 @@ if ($Modules = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
 #endregion
 
 #region: Query Version
+
 if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
     try {
         switch ($Module.Version.ToString()) {
             {$_ -eq "1.0"} {  [int]$VbrVersion = "11"  }
-            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  }
+            {$_ -eq "1.1"} {  [int]$VbrVersion = "12"  } # No new Module Version for v12 GA. So, script runs in v11 mode
             Default {[int]$VbrVersion = "11"}
         }
         }
@@ -205,9 +210,10 @@ if ($Module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell) {
                 throw "Failed to get Version from Module or SnapIn"
                 }
     }
-#endregions
+#endregion
 
 #region: Functions
+
 <#
 Big thanks to Shawn, creating an awsome Reporting Script:
 http://blog.smasterson.com/2016/02/16/veeam-v9-my-veeam-report-v9-0-1/
@@ -261,58 +267,10 @@ Function Get-vPCRepoInfo {
         $outputAry
     }
 }
-# Get-vPCRepoInfoPre11 curently not in use (Multi Version support Pending)
-Function Get-vPCRepoInfoPre11 {
-[CmdletBinding()]
-    param (
-        [Parameter(Position=0, ValueFromPipeline=$true)]
-        [PSObject[]]$Repository
-    )
-    Begin {
-        $outputAry = @()
-        Function New-RepoObject {param($name, $repohost, $path, $free, $total)
-        $repoObj = New-Object -TypeName PSObject -Property @{
-            Target = $name
-            RepoHost = $repohost
-                        Storepath = $path
-                        StorageFree = [Math]::Round([Decimal]$free/1GB,2)
-                        StorageTotal = [Math]::Round([Decimal]$total/1GB,2)
-                        FreePercentage = [Math]::Round(($free/$total)*100)
-            }
-        Return $repoObj | Select-Object Target, RepoHost, Storepath, StorageFree, StorageTotal, FreePercentage
-        }
-    }
-    Process {
-        Foreach ($r in $Repository) {
-            # Refresh Repository Size Info
-            try {
-                [Veeam.Backup.Core.CBackupRepositoryEx]::SyncSpaceInfoToDb($r, $true)
-
-            }
-            catch {
-                Write-Debug "SyncSpaceInfoToDb Failed"
-                Write-Error $_.ToString()
-                Write-Error $_.ScriptStackTrace
-            }
-            If ($r.HostId -eq "00000000-0000-0000-0000-000000000000") {
-                $HostName = ""
-            }
-            Else {
-                $HostName = $(Get-VBRServer | Where-Object {$_.Id -eq $r.HostId}).Name.ToLower()
-            }
-
-            Write-Debug $r.Info
-            $outputObj = New-RepoObject $r.Name $Hostname $r.Path $r.info.CachedFreeSpace $r.Info.CachedTotalSpace
-        }
-        $outputAry += $outputObj
-    }
-    End {
-        $outputAry
-    }
-}
 #endregion
 
 #region: Start BRHost Connection
+
 Write-Debug "Starting to Process Connection to '$BRHost' with user '$env:USERNAME' ..."
 $OpenConnection = (Get-VBRServerSession).Server
 if($OpenConnection -eq $BRHost) {
@@ -342,9 +300,11 @@ $NewConnection = (Get-VBRServerSession).Server
 if ($null -eq $NewConnection) {
     Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
 }
+
 #endregion
 
 #region: Convert mode (timeframe) to hours
+
 If ($reportMode -eq "Monthly") {
         $HourstoCheck = 720
 } Elseif ($reportMode -eq "Weekly") {
@@ -355,7 +315,7 @@ If ($reportMode -eq "Monthly") {
 #endregion
 
 #region: Collect and filter Repos
-[Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly"}    # Get all Repositories Except SAN
+[Array]$AllRepos = Get-VBRBackupRepository | Where-Object {$_.Type -notmatch "SanSnapshotOnly" -and $_.IsUnavailable -eq $False}    # Get all Repositories Except SAN
 [Array]$CloudRepos = $AllRepos | Where-Object {$_.Type -match "Cloud"}    # Get all Cloud Repositories
 [Array]$repoList = $AllRepos | Where-Object {$_.Type -notmatch "Cloud"}    # Get all Repositories Except SAN and Cloud
 <#
@@ -635,12 +595,7 @@ if ($includeEP) {
 #endregion:
 
 #region: Repository
-if ($VbrVersion -ge 11) {
-    $RepoData = $repoList | Get-vPCRepoInfo
-}
-else {
-    $RepoData = $repoList | Get-vPCRepoInfoPre11
-}
+$RepoData = $repoList | Get-vPCRepoInfo
 $RepoReport = @()
 ForEach ($RawRepo in $RepoData){
     If ($RawRepo.FreePercentage -lt $repoCritical) {$Status = "Critical"}
@@ -671,12 +626,7 @@ if ($CloudRepos) {
                 $CloudRepo = $CloudRepos | Where-Object {($_.CloudProvider.HostName -eq $CloudProvider.DNSName) -and ($_.Name -eq $CloudProviderRessource.RepositoryName)}
                 $totalSpaceGb = [Math]::Round([Decimal]$CloudProviderRessource.RepositoryAllocatedSpace/1KB,2)
                 #$totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
-                if ($VbrVersion -ge 10) {
-                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
-                }
-                else {
-                    $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryStoragesSize($CloudRepo.Id.Guid))/1GB,2)
-                }
+                $totalUsedGb = [Math]::Round([Decimal]([Veeam.Backup.Core.CBackupRepository]::GetRepositoryBackupsSize($CloudRepo.Id.Guid))/1GB,2)
                 $totalFreeGb = [Math]::Round($totalSpaceGb - $totalUsedGb,2)
                 $freePercentage = [Math]::Round(($totalFreeGb/$totalSpaceGb)*100)
                 If ($freePercentage -lt $repoCritical) {$Status = "Critical"}
