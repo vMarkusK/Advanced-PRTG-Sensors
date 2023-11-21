@@ -24,7 +24,7 @@
         .Notes
         NAME:  PRTG-VeeamBRStats-v3.ps1
         LASTEDIT: 2022/03/01
-        VERSION: 3.0.0
+        VERSION: 3.1.0
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -424,7 +424,7 @@ if ($includeBackup) {
 
 #region: Copy Jobs
 if ($includeCopy) {
-    $seshListBkc = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
+    $seshListBkc = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -match "BackupSync|SimpleBackupCopyWorker"})      # Gather all BackupCopy sessions within timeframe
     $successSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Success"})
     $warningSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Warning"})
     $failsSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Failed"})
