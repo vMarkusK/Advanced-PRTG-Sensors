@@ -479,7 +479,7 @@ if ($includeCopy) {
                 <showChart>1</showChart>
                 <showTable>1</showTable>
                 </result>"
-
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Success BackupCopys" -Value $successSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning BackupCopys" -Value $warningSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes BackupCopys" -Value $failsSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed BackupCopys" -Value $failedSessionsBkC.Count
