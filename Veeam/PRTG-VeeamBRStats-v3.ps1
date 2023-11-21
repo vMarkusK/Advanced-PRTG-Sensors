@@ -335,7 +335,6 @@ if ($scaleouts) {
 
 #region: Collect and filter Sessions
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
-$allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
@@ -548,7 +547,7 @@ if ($includeRepl) {
 
 #region: Endpoint Jobs
 if ($includeEP) {
-    $seshListEP = @($allEPSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck))}) # Gather all Endpoint sessions within timeframe
+    $seshListEP = Get-VBRComputerBackupJobSession | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck))}      # Gather all EP sessions within timeframe
     $successSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Success"})
     $warningSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Warning"})
     $failsSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Failed"})
