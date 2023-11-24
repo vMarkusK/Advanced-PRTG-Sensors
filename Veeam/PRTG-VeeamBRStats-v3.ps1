@@ -24,7 +24,7 @@
         .Notes
         NAME:  PRTG-VeeamBRStats-v3.ps1
         LASTEDIT: 2022/03/01
-        VERSION: 3.0.0
+        VERSION: 3.1.0
         KEYWORDS: Veeam, PRTG
 
         CREDITS:
@@ -335,7 +335,6 @@ if ($scaleouts) {
 
 #region: Collect and filter Sessions
 $allSesh = Get-VBRBackupSession         # Get all Sessions (Backup/BackupCopy/Replica)
-$allEPSesh =  Get-VBREPSession          # Get all Sessions of Endpoint Backups
 $SessionObject = [PSCustomObject] @{ }  # Filled for debug option
 #endregion
 
@@ -424,7 +423,7 @@ if ($includeBackup) {
 
 #region: Copy Jobs
 if ($includeCopy) {
-    $seshListBkc = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -eq "BackupSync"})      # Gather all BackupCopy sessions within timeframe
+    $seshListBkc = @($allSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck)) -and $_.JobType -match "BackupSync|SimpleBackupCopyWorker"})      # Gather all BackupCopy sessions within timeframe
     $successSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Success"})
     $warningSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Warning"})
     $failsSessionsBkC = @($seshListBkC | Where-Object{$_.Result -eq "Failed"})
@@ -479,7 +478,7 @@ if ($includeCopy) {
                 <showChart>1</showChart>
                 <showTable>1</showTable>
                 </result>"
-
+    $SessionObject | Add-Member -MemberType NoteProperty -Name "Success BackupCopys" -Value $successSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Warning BackupCopys" -Value $warningSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failes BackupCopys" -Value $failsSessionsBkC.Count
     $SessionObject | Add-Member -MemberType NoteProperty -Name "Failed BackupCopys" -Value $failedSessionsBkC.Count
@@ -548,7 +547,7 @@ if ($includeRepl) {
 
 #region: Endpoint Jobs
 if ($includeEP) {
-    $seshListEP = @($allEPSesh | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck))}) # Gather all Endpoint sessions within timeframe
+    $seshListEP = Get-VBRComputerBackupJobSession | Where-Object{($_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck))}      # Gather all EP sessions within timeframe
     $successSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Success"})
     $warningSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Warning"})
     $failsSessionsEP = @($seshListEP | Where-Object{$_.Result -eq "Failed"})
