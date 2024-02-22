@@ -51,9 +51,13 @@ param(
     [Parameter(Position=3, Mandatory=$false)]
         $repoWarn = 20,
     [Parameter(Position=4, Mandatory=$false)]
-        $selChann = "BCRE", # Inital channel selection
+        [string]$selChann = "BCRE", # Inital channel selection
     [Parameter(Position=5, Mandatory=$false)]
-         [switch] $PSRemote
+        [switch] $PSRemote,
+    [Parameter(Position=6, Mandatory=$false)]
+        [string] $User = "", #contoso\monitoring (better to run the Script as different User over task scheduler)
+    [Parameter(Position=7, Mandatory=$false)]
+        [string] $Password = ""
 )
 
 $includeBackup = $selChann.Contains("B")
@@ -311,33 +315,51 @@ Function Get-vPCRepoInfoPre11 {
 #region: Start BRHost Connection
 Write-Debug "Starting to Process Connection to '$BRHost' with user '$env:USERNAME' ..."
 $OpenConnection = (Get-VBRServerSession).Server
-if($OpenConnection -eq $BRHost) {
+
+if($OpenConnection -eq $BRHost) 
+    {
     Write-Debug "BRHost '$BRHost' is Already Connected..."
-} elseif ($null -eq $OpenConnection) {
-    Write-Debug "Connecting BRHost '$BRHost' with user '$env:USERNAME'..."
-    try {
-        Connect-VBRServer -Server $BRHost
-    }
-    catch {
-        Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
-    }
-} else {
-    Write-Debug "Disconnection current BRHost..."
-    Disconnect-VBRServer
+    } 
+
+else 
+    {
+    if($OpenConnectionn)
+        {
+        Write-Debug "Disconnection current BRHost..."
+        Disconnect-VBRServer
+        }
+
     Write-Debug "Connecting new BRHost '$BRHost' with user '$env:USERNAME'..."
 
     try {
-        Connect-VBRServer -Server $BRHost
-    }
-    catch {
-        Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
-    }
-}
+        if(($User -ne "") -and ($Password -ne ""))
+            {
+            Connect-VBRServer -Server $BRHost -User $User -Password $Password
+            }
+        else
+            {
+            Connect-VBRServer -Server $BRHost
+            }
+        }
+    catch 
+        {
+        if(($User -ne "") -and ($Password -ne ""))
+            {
+            Throw "Failed to connect to Veeam BR Host '$BRHost' with specified User($($User)) and Password"
+            }
+        else
+            {
+            Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
+            }
+        }
+    } 
+
 
 $NewConnection = (Get-VBRServerSession).Server
-if ($null -eq $NewConnection) {
+if ($null -eq $NewConnection) 
+    {
     Throw "Failed to connect to Veeam BR Host '$BRHost' with user '$env:USERNAME'"
-}
+    }
 #endregion
 
 #region: Convert mode (timeframe) to hours
